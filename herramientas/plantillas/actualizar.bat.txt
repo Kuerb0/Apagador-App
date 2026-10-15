@@ -1,0 +1,132 @@
+@echo off
+chcp 65001 >nul
+setlocal EnableExtensions
+title Apagador @@VERSION@@ - Actualizar
+color 0F
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Console]::OutputEncoding=[Text.Encoding]::UTF8; $l=[IO.File]::ReadAllLines('%~f0',[Text.Encoding]::UTF8); $a=[Array]::IndexOf($l,':::BANNERSTART'); $b=[Array]::IndexOf($l,':::BANNEREND'); foreach($t in $l[($a+1)..($b-1)]){ $p=$t.Split([char]0xA7); Write-Host -NoNewline $p[0] -ForegroundColor DarkCyan; if($p.Length -gt 1){ Write-Host -NoNewline 'O' -ForegroundColor DarkYellow; Write-Host $p[1] -ForegroundColor DarkCyan } else { Write-Host '' } }; $a=[Array]::IndexOf($l,':::TITULOSTART'); $b=[Array]::IndexOf($l,':::TITULOEND'); $l[($a+1)..($b-1)] | ForEach-Object { Write-Host $_ -ForegroundColor White }"
+echo.
+echo Esto sustituye el programa por la version nueva, EN ESTA MISMA CARPETA.
+echo No toca tus datos.
+echo.
+echo Cierra antes Apagador si lo tienes abierto.
+echo.
+pause
+
+set "SELF=%~f0"
+set "SELF_DIR=%~dp0"
+if "%SELF_DIR:~-1%"=="\" set "SELF_DIR=%SELF_DIR:~0,-1%"
+for %%I in ("%SELF_DIR%") do set "SELF_NAME=%%~nxI"
+set "INSTALL_DIR=%SELF_DIR%"
+if /i "%SELF_NAME%"=="instaladores" for %%I in ("%SELF_DIR%\..") do set "INSTALL_DIR=%%~fI"
+set "WORKDIR=%TEMP%\apagador_actualizar_%RANDOM%"
+
+if exist "%INSTALL_DIR%\apagador_app.py" goto :hay_instalacion
+echo.
+echo No encuentro una instalacion de Apagador en esta carpeta:
+echo   %INSTALL_DIR%
+echo Esto actualiza una instalacion que ya exista aqui. Si es la primera
+echo vez, usa el instalador completo ^(el que tambien mete Python^).
+pause
+exit /b 1
+
+:hay_instalacion
+if not exist "%WORKDIR%" mkdir "%WORKDIR%" >nul 2>&1
+
+echo.
+echo [1/4] Guardando una copia de lo anterior, por si acaso...
+set "COPIAS=%INSTALL_DIR%\anteriores"
+if not exist "%COPIAS%" mkdir "%COPIAS%" >nul 2>&1
+if exist "%INSTALL_DIR%\apagador_app.py" xcopy "%INSTALL_DIR%\apagador_app.py" "%COPIAS%\anterior\" /y /q >nul 2>&1
+
+echo.
+echo [2/4] Extrayendo la version nueva...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$l=Get-Content -LiteralPath '%SELF%' -Encoding UTF8; $s=($l | Select-String -SimpleMatch ':::PSSTART' | Select-Object -Last 1).LineNumber; $e=($l | Select-String -SimpleMatch ':::PSEND' | Select-Object -Last 1).LineNumber; $l[$s..($e-2)] | Set-Content -LiteralPath '%WORKDIR%\extraer.ps1' -Encoding UTF8"
+if not exist "%WORKDIR%\extraer.ps1" (
+    echo No se ha podido preparar la actualizacion ^(fallo al extraer el script^).
+    pause
+    exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%WORKDIR%\extraer.ps1" "%SELF%" "%INSTALL_DIR%"
+if not exist "%INSTALL_DIR%\apagador_app.py" (
+    echo No se ha podido extraer apagador_app.py.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [3/4] Buscando Python...
+
+set "PYEXE="
+if exist "%INSTALL_DIR%\python\python.exe" call :probar "%INSTALL_DIR%\python\python.exe"
+if not defined PYEXE for /f "delims=" %%P in ('py -3 -c "import sys; print(sys.executable)" 2^>nul') do if not defined PYEXE call :probar "%%P"
+if not defined PYEXE for /f "delims=" %%P in ('python -c "import sys; print(sys.executable)" 2^>nul') do if not defined PYEXE call :probar "%%P"
+
+if defined PYEXE goto :con_python
+echo       No encuentro un Python valido. El programa se ha actualizado, pero
+echo       si falta algo usa el instalador completo.
+goto :accesos
+
+:con_python
+echo       Python: %PYEXE%
+
+set "PYWEXE=%PYEXE:python.exe=pythonw.exe%"
+
+:accesos
+
+echo.
+echo [4/4] Actualizando los accesos directos ^(si existen^)...
+if defined PYWEXE powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; foreach($c in @($w.SpecialFolders('Desktop'),$w.SpecialFolders('Startup'))){ $f=Join-Path $c 'Apagador.lnk'; if(Test-Path -LiteralPath $f){ $s=$w.CreateShortcut($f); if($s.TargetPath -like '*pythonw.exe'){ $s.TargetPath='%PYWEXE%'; $s.Arguments='\"%INSTALL_DIR%\apagador_app.py\"'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%INSTALL_DIR%\apagador.ico'; $s.Save() } } }"
+
+echo.
+echo Actualizacion terminada.
+echo Abre Apagador desde el acceso directo del Escritorio.
+echo Si algo fuera mal, el programa anterior quedo guardado en:
+echo   %COPIAS%\anterior
+echo.
+pause
+
+rmdir /s /q "%WORKDIR%" >nul 2>&1
+exit /b 0
+
+:probar
+"%~1" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+if not errorlevel 1 set "PYEXE=%~1"
+exit /b 0
+
+:::PSSTART
+param([string]$self, [string]$dest)
+$enc = New-Object System.Text.UTF8Encoding($false)
+$lines = [System.IO.File]::ReadAllLines($self, $enc)
+$i = 0
+while ($i -lt $lines.Length) {
+    $l = $lines[$i]
+    if ($l.StartsWith(':::BEGIN ')) {
+        $partes = $l.Substring(9).Trim().Split('|')
+        $rel = $partes[0]
+        $modo = $partes[1]
+        $j = $i + 1
+        $buf = New-Object System.Collections.Generic.List[string]
+        while ($j -lt $lines.Length -and -not $lines[$j].StartsWith(':::END')) {
+            $buf.Add($lines[$j])
+            $j++
+        }
+        $destino = Join-Path $dest $rel
+        $carpeta = Split-Path -Parent $destino
+        if (-not (Test-Path -LiteralPath $carpeta)) {
+            New-Item -ItemType Directory -Path $carpeta -Force | Out-Null
+        }
+        if ($modo -eq 'b64') {
+            [System.IO.File]::WriteAllBytes($destino, [Convert]::FromBase64String(($buf -join '')))
+        } else {
+            [System.IO.File]::WriteAllText($destino, (($buf -join "`r`n") + "`r`n"), $enc)
+        }
+        $i = $j
+    }
+    $i++
+}
+:::PSEND
+
+@@BANNER@@
+
+@@PAYLOAD@@

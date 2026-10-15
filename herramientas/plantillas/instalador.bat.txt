@@ -1,0 +1,169 @@
+@echo off
+chcp 65001 >nul
+setlocal EnableExtensions
+title Apagador @@VERSION@@ - Instalador
+color 0F
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Console]::OutputEncoding=[Text.Encoding]::UTF8; $l=[IO.File]::ReadAllLines('%~f0',[Text.Encoding]::UTF8); $a=[Array]::IndexOf($l,':::BANNERSTART'); $b=[Array]::IndexOf($l,':::BANNEREND'); foreach($t in $l[($a+1)..($b-1)]){ $p=$t.Split([char]0xA7); Write-Host -NoNewline $p[0] -ForegroundColor DarkCyan; if($p.Length -gt 1){ Write-Host -NoNewline 'O' -ForegroundColor DarkYellow; Write-Host $p[1] -ForegroundColor DarkCyan } else { Write-Host '' } }; $a=[Array]::IndexOf($l,':::TITULOSTART'); $b=[Array]::IndexOf($l,':::TITULOEND'); $l[($a+1)..($b-1)] | ForEach-Object { Write-Host $_ -ForegroundColor White }"
+echo.
+echo Esto va a:
+echo   1. Copiar el programa en esta carpeta
+echo   2. Buscar Python o, si no hay, instalar uno EN ESTA CARPETA
+echo      ^(no hace falta ser administrador^)
+echo   3. Comprobar que Python trae tkinter ^(la ventana del programa^)
+echo   4. Crear un acceso directo en el Escritorio
+echo   5. Abrir la app
+echo.
+echo Todo se queda dentro de esta carpeta. No se manda ni se guarda
+echo ningun dato tuyo en ningun sitio ajeno.
+echo.
+pause
+
+set "SELF=%~f0"
+set "SELF_DIR=%~dp0"
+if "%SELF_DIR:~-1%"=="\" set "SELF_DIR=%SELF_DIR:~0,-1%"
+for %%I in ("%SELF_DIR%") do set "SELF_NAME=%%~nxI"
+set "INSTALL_DIR=%SELF_DIR%"
+if /i "%SELF_NAME%"=="instaladores" for %%I in ("%SELF_DIR%\..") do set "INSTALL_DIR=%%~fI"
+set "WORKDIR=%TEMP%\apagador_instalador_%RANDOM%"
+
+echo prueba > "%INSTALL_DIR%\.prueba_escritura" 2>nul
+if not exist "%INSTALL_DIR%\.prueba_escritura" (
+    echo.
+    echo No puedo escribir en esta carpeta:
+    echo   %INSTALL_DIR%
+    echo Mueve este instalador a una carpeta tuya y vuelve a ejecutarlo.
+    pause
+    exit /b 1
+)
+del /f /q "%INSTALL_DIR%\.prueba_escritura" >nul 2>&1
+
+if not exist "%WORKDIR%" mkdir "%WORKDIR%" >nul 2>&1
+
+echo.
+echo [1/5] Extrayendo los ficheros del programa...
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$l=Get-Content -LiteralPath '%SELF%' -Encoding UTF8; $s=($l | Select-String -SimpleMatch ':::PSSTART' | Select-Object -Last 1).LineNumber; $e=($l | Select-String -SimpleMatch ':::PSEND' | Select-Object -Last 1).LineNumber; $l[$s..($e-2)] | Set-Content -LiteralPath '%WORKDIR%\extraer.ps1' -Encoding UTF8"
+if not exist "%WORKDIR%\extraer.ps1" (
+    echo No se ha podido preparar el instalador ^(fallo al extraer el script^).
+    pause
+    exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%WORKDIR%\extraer.ps1" "%SELF%" "%INSTALL_DIR%"
+if not exist "%INSTALL_DIR%\apagador_app.py" (
+    echo No se ha podido extraer apagador_app.py.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [2/5] Buscando Python ^(3.10 o superior^)...
+
+set "PYEXE="
+if exist "%INSTALL_DIR%\python\python.exe" call :probar "%INSTALL_DIR%\python\python.exe"
+if not defined PYEXE for /f "delims=" %%P in ('py -3 -c "import sys; print(sys.executable)" 2^>nul') do if not defined PYEXE call :probar "%%P"
+if not defined PYEXE for /f "delims=" %%P in ('python -c "import sys; print(sys.executable)" 2^>nul') do if not defined PYEXE call :probar "%%P"
+
+if defined PYEXE goto :python_encontrado
+
+echo       No hay un Python valido: se va a descargar e instalar DENTRO
+echo       DE ESTA CARPETA ^(subcarpeta "python"^).
+echo       ^(puede tardar 1-2 minutos; se necesita conexion a internet^)
+set "PYINSTALLER=%WORKDIR%\python-instalador.exe"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_DIR%\herramientas\descargar_python.ps1" "%PYINSTALLER%"
+if not exist "%PYINSTALLER%" goto :error_descarga_python
+
+"%PYINSTALLER%" /quiet TargetDir="%INSTALL_DIR%\python" InstallAllUsers=0 PrependPath=0 Include_pip=1 Include_tcltk=1 Include_test=0 Include_launcher=0
+if exist "%INSTALL_DIR%\python\python.exe" set "PYEXE=%INSTALL_DIR%\python\python.exe"
+if not defined PYEXE goto :error_instalacion_python
+echo       Python instalado en esta carpeta.
+goto :python_encontrado
+
+:error_descarga_python
+echo.
+echo No se ha podido descargar Python. Revisa la conexion a internet
+echo e intentalo de nuevo, o instala Python tu mismo desde python.org
+echo ^(marcando "Add python.exe to PATH"^) y vuelve a ejecutar este instalador.
+pause
+exit /b 1
+
+:error_instalacion_python
+echo.
+echo Algo ha fallado instalando Python en esta carpeta. Cierra esta
+echo ventana y vuelve a ejecutar el instalador: si Python quedo a
+echo medias, borra la subcarpeta "python" antes de reintentar.
+pause
+exit /b 1
+
+:python_encontrado
+set "PYWEXE=%PYEXE:python.exe=pythonw.exe%"
+echo       Python: %PYEXE%
+
+echo.
+echo [3/5] Comprobando tkinter ^(la ventana del programa^)...
+"%PYEXE%" -c "import tkinter" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo Este Python no trae tkinter. Instala Python desde python.org o borra
+    echo la subcarpeta "python" si existe y vuelve a ejecutar el instalador.
+    pause
+    exit /b 1
+)
+echo       OK
+
+echo.
+echo [4/5] Creando el acceso directo del Escritorio...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut((Join-Path $w.SpecialFolders('Desktop') 'Apagador.lnk')); $s.TargetPath='%PYWEXE%'; $s.Arguments='\"%INSTALL_DIR%\apagador_app.py\"'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%INSTALL_DIR%\apagador.ico'; $s.Description='Apagador @@VERSION@@'; $s.Save()"
+
+echo.
+echo [5/5] Instalacion terminada. Todo ha quedado en esta carpeta:
+echo   %INSTALL_DIR%
+echo.
+pause
+start "" "%PYWEXE%" "%INSTALL_DIR%\apagador_app.py"
+
+rmdir /s /q "%WORKDIR%" >nul 2>&1
+exit /b 0
+
+:probar
+"%~1" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+if not errorlevel 1 set "PYEXE=%~1"
+exit /b 0
+
+:::PSSTART
+param([string]$self, [string]$dest)
+$enc = New-Object System.Text.UTF8Encoding($false)
+$lines = [System.IO.File]::ReadAllLines($self, $enc)
+$i = 0
+while ($i -lt $lines.Length) {
+    $l = $lines[$i]
+    if ($l.StartsWith(':::BEGIN ')) {
+        $partes = $l.Substring(9).Trim().Split('|')
+        $rel = $partes[0]
+        $modo = $partes[1]
+        $j = $i + 1
+        $buf = New-Object System.Collections.Generic.List[string]
+        while ($j -lt $lines.Length -and -not $lines[$j].StartsWith(':::END')) {
+            $buf.Add($lines[$j])
+            $j++
+        }
+        $destino = Join-Path $dest $rel
+        $carpeta = Split-Path -Parent $destino
+        if (-not (Test-Path -LiteralPath $carpeta)) {
+            New-Item -ItemType Directory -Path $carpeta -Force | Out-Null
+        }
+        if ($modo -eq 'b64') {
+            [System.IO.File]::WriteAllBytes($destino, [Convert]::FromBase64String(($buf -join '')))
+        } else {
+            [System.IO.File]::WriteAllText($destino, (($buf -join "`r`n") + "`r`n"), $enc)
+        }
+        $i = $j
+    }
+    $i++
+}
+:::PSEND
+
+@@BANNER@@
+
+@@PAYLOAD@@
