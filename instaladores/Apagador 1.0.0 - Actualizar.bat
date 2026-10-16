@@ -198,7 +198,7 @@ while ($i -lt $lines.Length) {
                                                                     V E R S I Ó N   1.0.0
 :::TITULOEND
 
-:::BEGIN apagador_app.py|text
+:::BEGIN apagador_app.py|text|970676d6e113c6b7d31565fb5786ac23bef2c8788319c1a73f510cf1b2e4c0d0
 """
 Apagador programado con interfaz grafica.
 Permite elegir una duracion en minutos o una hora exacta del dia
@@ -420,7 +420,7 @@ def main():
 if __name__ == "__main__":
     main()
 :::END
-:::BEGIN apagador.ico|b64
+:::BEGIN apagador.ico|b64|0ab870566ee50df217dc05738577df0634d77b2774c226cd8c1796ca671dc0a9
 AAABAAcAEBAAAAAAIADdAgAAdgAAABgYAAAAACAAGQUAAFMDAAAgIAAAAAAgAE0HAABsCAAAMDAA
 AAAAIADvCwAAuQ8AAEBAAAAAACAA+Q8AAKgbAACAgAAAAAAgALcfAAChKwAAAAAAAAAAIADNCgAA
 WEsAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAqRJREFUeJxVk0toXHUUxn/f
@@ -809,10 +809,10 @@ I8ArNIUGzvmBQpxgG6iHwf+OglwgCPJj8M9RmEYEQT4M/jUKdBNBEB+D345CDSAM4mDo+1C0CQiC
 fRj8MRRvIoJgHQZ/DorohDCYj6Gfj4IuQBj0Y+h9UdzFCINrDP06FHojwuCBod+DogeiFAgMfAwc
 QnAVQoFhj4uDSShyKDDsuXBYBXkGBAMOAAAAAGn9Dd2WMJ5H+q1/AAAAAElFTkSuQmCC
 :::END
-:::BEGIN VERSION.txt|text
+:::BEGIN VERSION.txt|text|4ca8bbd3c595ee306226c6996b32b8d47a900217c55a7ed0cfc868ee444f34f1
 1.0.0
 :::END
-:::BEGIN herramientas/descargar_python.ps1|text
+:::BEGIN herramientas/descargar_python.ps1|text|5fd9695107c90a52315badef90b8f524381b12a42f5b9f15e7fcfc8e3278828f
 # Descarga el instalador de Python para Windows (64 bits) a la ruta indicada.
 # Busca en python.org la version 3.13 mas reciente que tenga instalador y,
 # si no puede, prueba con una lista de versiones conocidas.

@@ -4,21 +4,6 @@ setlocal EnableExtensions
 title Apagador 1.0.0 - Instalador
 color 0F
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "[Console]::OutputEncoding=[Text.Encoding]::UTF8; $l=[IO.File]::ReadAllLines('%~f0',[Text.Encoding]::UTF8); $a=[Array]::IndexOf($l,':::BANNERSTART'); $b=[Array]::IndexOf($l,':::BANNEREND'); foreach($t in $l[($a+1)..($b-1)]){ $p=$t.Split([char]0xA7); Write-Host -NoNewline $p[0] -ForegroundColor DarkCyan; if($p.Length -gt 1){ Write-Host -NoNewline 'O' -ForegroundColor DarkYellow; Write-Host $p[1] -ForegroundColor DarkCyan } else { Write-Host '' } }; $a=[Array]::IndexOf($l,':::TITULOSTART'); $b=[Array]::IndexOf($l,':::TITULOEND'); $l[($a+1)..($b-1)] | ForEach-Object { Write-Host $_ -ForegroundColor White }"
-echo.
-echo Esto va a:
-echo   1. Copiar el programa en esta carpeta
-echo   2. Buscar Python o, si no hay, instalar uno EN ESTA CARPETA
-echo      ^(no hace falta ser administrador^)
-echo   3. Comprobar que Python trae tkinter ^(la ventana del programa^)
-echo   4. Crear un acceso directo en el Escritorio
-echo   5. Abrir la app
-echo.
-echo Todo se queda dentro de esta carpeta. No se manda ni se guarda
-echo ningun dato tuyo en ningun sitio ajeno.
-echo.
-pause
-
 set "SELF=%~f0"
 set "SELF_DIR=%~dp0"
 if "%SELF_DIR:~-1%"=="\" set "SELF_DIR=%SELF_DIR:~0,-1%"
@@ -26,142 +11,581 @@ for %%I in ("%SELF_DIR%") do set "SELF_NAME=%%~nxI"
 set "INSTALL_DIR=%SELF_DIR%"
 if /i "%SELF_NAME%"=="instaladores" for %%I in ("%SELF_DIR%\..") do set "INSTALL_DIR=%%~fI"
 set "WORKDIR=%TEMP%\apagador_instalador_%RANDOM%"
-
-echo prueba > "%INSTALL_DIR%\.prueba_escritura" 2>nul
-if not exist "%INSTALL_DIR%\.prueba_escritura" (
-    echo.
-    echo No puedo escribir en esta carpeta:
-    echo   %INSTALL_DIR%
-    echo Mueve este instalador a una carpeta tuya y vuelve a ejecutarlo.
-    pause
-    exit /b 1
-)
-del /f /q "%INSTALL_DIR%\.prueba_escritura" >nul 2>&1
-
-if not exist "%WORKDIR%" mkdir "%WORKDIR%" >nul 2>&1
+mkdir "%WORKDIR%" >nul 2>&1
+set "VJ_WORK=%WORKDIR%"
+set "VJ_SELF=%SELF%"
+set "VJ_DIR=%INSTALL_DIR%"
+rem Con ventana (lo normal): PowerShell extrae el asistente y lo abre oculto; esta consola se cierra y el cuervo va en la ventana.
+rem Con -Silencioso se instala aqui mismo, en la consola, con el banner.
+set "VJ_GUI=1"
+echo %* | findstr /i /c:"-Silencioso" >nul && set "VJ_GUI="
 
 echo.
-echo [1/5] Extrayendo los ficheros del programa...
-
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$l=Get-Content -LiteralPath '%SELF%' -Encoding UTF8; $s=($l | Select-String -SimpleMatch ':::PSSTART' | Select-Object -Last 1).LineNumber; $e=($l | Select-String -SimpleMatch ':::PSEND' | Select-Object -Last 1).LineNumber; $l[$s..($e-2)] | Set-Content -LiteralPath '%WORKDIR%\extraer.ps1' -Encoding UTF8"
-if not exist "%WORKDIR%\extraer.ps1" (
+echo   Instalador de Apagador 1.0.0 ^| Kuerb0
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$B={param($p) $n=[int]($p/5); Write-Host -NoNewline ([string][char]13+'  Cargando  ['+('#'*$n)+('.'*(20-$n))+'] '+$p+' %%  ') -ForegroundColor Cyan}; & $B 5; $l=Get-Content -LiteralPath '%SELF%' -Encoding UTF8; & $B 40; $s=($l | Select-String -SimpleMatch ':::PSSTART' | Select-Object -Last 1).LineNumber; $e=($l | Select-String -SimpleMatch ':::PSEND' | Select-Object -Last 1).LineNumber; & $B 55; $l[$s..($e-2)] | Set-Content -LiteralPath '%WORKDIR%\instalador.ps1' -Encoding UTF8; & $B 60; if ($env:VJ_GUI) { $q=[char]34; $a=('-NoProfile -ExecutionPolicy Bypass -STA -File '+$q+$env:VJ_WORK+'\instalador.ps1'+$q+' -Self '+$q+$env:VJ_SELF+$q+' -DirPorDefecto '+$q+$env:VJ_DIR+$q+' -LimpiarTemp'); $i=New-Object Diagnostics.ProcessStartInfo('powershell',$a); $i.UseShellExecute=$false; $i.CreateNoWindow=$true; [void][Diagnostics.Process]::Start($i); $k=0; while (-not (Test-Path (Join-Path $env:VJ_WORK 'listo')) -and $k -lt 100) { $k++; & $B ([Math]::Min(95,60+$k*2)); Start-Sleep -Milliseconds 120 } }; & $B 100; Write-Host ''"
+if not exist "%WORKDIR%\instalador.ps1" (
     echo No se ha podido preparar el instalador ^(fallo al extraer el script^).
     pause
     exit /b 1
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%WORKDIR%\extraer.ps1" "%SELF%" "%INSTALL_DIR%"
-if not exist "%INSTALL_DIR%\apagador_app.py" (
-    echo No se ha podido extraer apagador_app.py.
-    pause
-    exit /b 1
-)
+if defined VJ_GUI exit /b 0
 
+:consola
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Console]::OutputEncoding=[Text.Encoding]::UTF8; $l=[IO.File]::ReadAllLines('%~f0',[Text.Encoding]::UTF8); $a=[Array]::IndexOf($l,':::BANNERSTART'); $b=[Array]::IndexOf($l,':::BANNEREND'); foreach($t in $l[($a+1)..($b-1)]){ $p=$t.Split([char]0xA7); Write-Host -NoNewline $p[0] -ForegroundColor DarkCyan; if($p.Length -gt 1){ Write-Host -NoNewline 'O' -ForegroundColor DarkYellow; Write-Host $p[1] -ForegroundColor DarkCyan } else { Write-Host '' } }; $a=[Array]::IndexOf($l,':::TITULOSTART'); $b=[Array]::IndexOf($l,':::TITULOEND'); $l[($a+1)..($b-1)] | ForEach-Object { Write-Host $_ -ForegroundColor White }"
 echo.
-echo [2/5] Buscando Python ^(3.10 o superior^)...
-
-set "PYEXE="
-if exist "%INSTALL_DIR%\python\python.exe" call :probar "%INSTALL_DIR%\python\python.exe"
-if not defined PYEXE for /f "delims=" %%P in ('py -3 -c "import sys; print(sys.executable)" 2^>nul') do if not defined PYEXE call :probar "%%P"
-if not defined PYEXE for /f "delims=" %%P in ('python -c "import sys; print(sys.executable)" 2^>nul') do if not defined PYEXE call :probar "%%P"
-
-if defined PYEXE goto :python_encontrado
-
-echo       No hay un Python valido: se va a descargar e instalar DENTRO
-echo       DE ESTA CARPETA ^(subcarpeta "python"^).
-echo       ^(puede tardar 1-2 minutos; se necesita conexion a internet^)
-set "PYINSTALLER=%WORKDIR%\python-instalador.exe"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_DIR%\herramientas\descargar_python.ps1" "%PYINSTALLER%"
-if not exist "%PYINSTALLER%" goto :error_descarga_python
-
-"%PYINSTALLER%" /quiet TargetDir="%INSTALL_DIR%\python" InstallAllUsers=0 PrependPath=0 Include_pip=1 Include_tcltk=1 Include_test=0 Include_launcher=0
-if exist "%INSTALL_DIR%\python\python.exe" set "PYEXE=%INSTALL_DIR%\python\python.exe"
-if not defined PYEXE goto :error_instalacion_python
-echo       Python instalado en esta carpeta.
-goto :python_encontrado
-
-:error_descarga_python
-echo.
-echo No se ha podido descargar Python. Revisa la conexion a internet
-echo e intentalo de nuevo, o instala Python tu mismo desde python.org
-echo ^(marcando "Add python.exe to PATH"^) y vuelve a ejecutar este instalador.
-pause
-exit /b 1
-
-:error_instalacion_python
-echo.
-echo Algo ha fallado instalando Python en esta carpeta. Cierra esta
-echo ventana y vuelve a ejecutar el instalador: si Python quedo a
-echo medias, borra la subcarpeta "python" antes de reintentar.
-pause
-exit /b 1
-
-:python_encontrado
-set "PYWEXE=%PYEXE:python.exe=pythonw.exe%"
-echo       Python: %PYEXE%
-
-echo.
-echo [3/5] Comprobando tkinter ^(la ventana del programa^)...
-"%PYEXE%" -c "import tkinter" >nul 2>&1
-if errorlevel 1 (
-    echo.
-    echo Este Python no trae tkinter. Instala Python desde python.org o borra
-    echo la subcarpeta "python" si existe y vuelve a ejecutar el instalador.
-    pause
-    exit /b 1
-)
-echo       OK
-
-echo.
-echo [4/5] Creando el acceso directo del Escritorio...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut((Join-Path $w.SpecialFolders('Desktop') 'Apagador.lnk')); $s.TargetPath='%PYWEXE%'; $s.Arguments='\"%INSTALL_DIR%\apagador_app.py\"'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.IconLocation='%INSTALL_DIR%\apagador.ico'; $s.Description='Apagador 1.0.0'; $s.Save()"
-
-echo.
-echo [5/5] Instalacion terminada. Todo ha quedado en esta carpeta:
-echo   %INSTALL_DIR%
-echo.
-pause
-start "" "%PYWEXE%" "%INSTALL_DIR%\apagador_app.py"
-
+powershell -NoProfile -ExecutionPolicy Bypass -STA -File "%WORKDIR%\instalador.ps1" -Self "%SELF%" -DirPorDefecto "%INSTALL_DIR%" %*
+set "RC=%ERRORLEVEL%"
 rmdir /s /q "%WORKDIR%" >nul 2>&1
-exit /b 0
-
-:probar
-"%~1" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
-if not errorlevel 1 set "PYEXE=%~1"
-exit /b 0
+rem (sin pause: -Silencioso es para scripts y no debe quedarse esperando una tecla)
+exit /b %RC%
 
 :::PSSTART
-param([string]$self, [string]$dest)
-$enc = New-Object System.Text.UTF8Encoding($false)
-$lines = [System.IO.File]::ReadAllLines($self, $enc)
-$i = 0
-while ($i -lt $lines.Length) {
-    $l = $lines[$i]
-    if ($l.StartsWith(':::BEGIN ')) {
-        $partes = $l.Substring(9).Trim().Split('|')
-        $rel = $partes[0]
-        $modo = $partes[1]
-        $j = $i + 1
-        $buf = New-Object System.Collections.Generic.List[string]
-        while ($j -lt $lines.Length -and -not $lines[$j].StartsWith(':::END')) {
-            $buf.Add($lines[$j])
-            $j++
-        }
-        $destino = Join-Path $dest $rel
-        $carpeta = Split-Path -Parent $destino
-        if (-not (Test-Path -LiteralPath $carpeta)) {
-            New-Item -ItemType Directory -Path $carpeta -Force | Out-Null
-        }
-        if ($modo -eq 'b64') {
-            [System.IO.File]::WriteAllBytes($destino, [Convert]::FromBase64String(($buf -join '')))
-        } else {
-            [System.IO.File]::WriteAllText($destino, (($buf -join "`r`n") + "`r`n"), $enc)
-        }
-        $i = $j
-    }
-    $i++
+# Asistente de instalacion de Apagador 1.0.0 (Windows PowerShell 5.1, ventana WinForms).
+# Lo arranca el .bat con:  -Self <ruta del .bat> -DirPorDefecto <carpeta>   (el .bat lleva los ficheros del programa dentro).
+# Opciones para pruebas o instalacion sin ventana:
+#   -Silencioso -Destino <carpeta>   instala sin ventana, con las opciones por defecto
+#   -SinRed       no descarga Python ni instala librerias      -SinAccesos   ni accesos directos ni desinstalador
+#   -NombreAcceso <texto>   nombre de los accesos directos (por defecto, el del programa)
+#   -Captura <carpeta>      guarda una imagen de cada pagina de la ventana y sale
+#   -Origen <ruta>          (lo pone el .exe) donde esta el instalador que el usuario ha descargado; si no, es el propio -Self
+#   -LimpiarTemp            (lo pone el .bat o el .exe) borra al terminar la carpeta temporal donde esta este script
+param(
+    [string]$Self, [string]$DirPorDefecto, [string]$Destino,
+    [switch]$Silencioso, [switch]$SinRed, [switch]$SinAccesos,
+    [string]$NombreAcceso, [string]$Captura, [switch]$LimpiarTemp, [string]$Origen)
+
+$App = @{ Nombre = 'Apagador'; Version = '1.0.0'; Comprueba = 'apagador_app.py'; Lanzador = 'apagador_app.py'
+          Reqs = ''; Icono = 'apagador.ico'; Imports = 'tkinter'; PipExtra = ''; ExtraImport = ''
+          Datos = 'si los hubiera'; Carpetas = @(); Programa = @('apagador_app.py', 'apagador.ico', 'VERSION.txt', 'herramientas')
+          VersionFile = 'VERSION.txt'; VersionRe = ''; PyMin = '3.10'; PyImport = 'tkinter'; PipPost = ''
+          PrimeraVez = ''; PrimeraSenal = ''; PortalUrl = 'https://kuerb0.github.io/portal/webs.json'; PortalPrefijo = 'Apagador' }
+if (-not $NombreAcceso) { $NombreAcceso = $App.Nombre }
+if (-not $Origen) { $Origen = $Self }
+$CuervoPng = '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'      # el cuervo del banner (lo dibuja generar_instaladores.py a partir de plantillas/cuervo.txt)
+$NombrePng = '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'      # el nombre del programa en letras grandes
+$CarpetaIco = 'AAABAAcAEBAAAAAAIAAdAwAAdgAAABgYAAAAACAANwUAAJMDAAAgIAAAAAAgAG0HAADKCAAAMDAAAAAAIACWCwAANxAAAEBAAAAAACAAlg8AAM0bAACAgAAAAAAgAL8eAABjKwAAAAAAAAAAIAB3LwAAIkoAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAuRJREFUeJxNk8FrXFUUxr9z7n1v5s1MMk3apo5gxphpcdFFQ+1SkawCWtSFUOJCXOhC3ChIIejCTbttbRftH+DGWi26CYqIG8GdigYjNg8XoiVpaOYlk8l795xT7qTR3MsHl8v3O/eee84l/D8cAOl2u3Xn3CsAFhg4SQAJ6C5g39Tr9dsrKyvbB94I0WF4ZmbmRWa+TMBpIsKuGuLMmEcmM/tDVT/I8/zWAUOH4Hecc9fihqpqoWqvtxqUEeFmMbAWETETGxFEZCnP88uR5QjPzs4uRBiqMhCJUXkPcHNJws/XUq6ikcADVTXV4Ly/1Ov1Xo0sdzqdhqp+zIAVajibJu6zYxOYYsYDUxRmOMKET49N4NlayoUak6qJyJVut3uEsyx7yTGfHIrYCcfu+mQbv1YB66pIiEaKgX4sS1ydHMeT3vGuqnrnHmfmxZjCC47Its3stWaGQhUXH/ShBiTxlRWISS1tbuOvIHijlWFghnjjyDKAnpqRA9EzaYLv9kqUBmRM2FbDbiqYagHtJvDtsMRckiAFsZgRET3lD5VytIgnGxlq4vBVtoPrbwbcUUOVKobLGYrfCN7te4OAPRGtMdG5ALOfqoD5egpXECo11OrA8ROMEAjEBj6/h635EreNbLwO+v4X+9Ob2bISXYh1/mRnF4vNOj5st/D+vwX68Ggc7aASGp1oxw0dBp4AjJsOT58a/u6TJPm8qqqPMubpv4Po25t9vnG0jTNTHnfbBG6OoRYe5RfTi1eHIfEJqrQBXl1dLQC8q8zUYtIfhqWeX9/Ez2XAmcRDRaEi+1IxUzEyNTIxjortuLa29oWEsARmP+aY/xGR9za39GK/b0mNLUlI98UU5Zg8UhcfpjZq5Rgk9raqLopZnrFzj9U8VwPQvXuB7veN728ZD4ZaBLENEVtHKRtmmv9XwoNPNT09PeG9v8CMhRCsNznuqNFwebvBX7/18tiX88+1d6K5pc4wt7zxELn4bERjGlh8AAAAAElFTkSuQmCCiVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAE/klEQVR4nIVWW4iVVRT+1tr73G/jjEqjk3NmBoSCUMFKJisJ0166v1hRERH5oD1EBr1Fj4EagSSK0UuBLz0pEd2kpECyB7OJGp1RIQt1dMY51/n/vVesfc4/M2qXDZvD/+9/f99e3/rW2odw6yAADMDpw+rVq4eccxtFZB2AlbpGRBe996dE5Pi5c+d+6+7TPdKdN4Dd/Bw+qFarDxhjdgJ4mIgqCYIOn/x6XyeiYyKyb2Ji4rNFRP6fCMLCwMBALpPJ7AGwnYgUJMGUmu8csMCsG0OkzB1aEfkkiqIdFy5cuLaYJCEILwYHB3ustUeY+T7nXAClzhq1RbCtkEOeCB/VmrAdBpEukDHGeO9PM/Mj4+PjfySYShBOMjAwkE6n018y86hzLiKiVJKI5KOjy3qx1DA2X5rCNS8BYV42kcgYk/Le/5rNZjeOjY1NJycPOKlUaq8xZh5cF5siyBAh7hJd8h516QBHIsgRQSPTEJgopXuZ+Y5ms3moKxEF8JGRkVFjzKvOuZiIrL6c9YJXinl82FtBiQhOAKtSdHdmibC/t4I3ykU0VChF65DExpgnqtXq44odIvTe7wqJ6gDQdS94uZjDW+UiBq3BCsOIIPNSxQIsYw7vd5byeL1UQK0bGakzNHdEiklcrVYHiWizusUARiVYk7bYVS7ionN4cWoap6M4yKEn16myTTqH56emMRbF2FEq4P5MOiHRZCvRvSMjI+vUZpuIqNjNOKne6pYlzNg7W8fJuagj0WL/k6DIhPHY4d3r9SDdc4XcYs97Zrbe+60sIms7UUEiAH3MGE2ncTaO8VVrDhXmkGQFUYuyEMQRWg4oCuG71hx+jmLcnU5hpTFoy4L3iWitlr2Wf3ipzlCC5YZxJoox7X0A1qERXI49pmwMm/foKwBLi4CzgrEoQp9l9KcYngWWQUwh8f325naRJDJUGTrDEFBvAx/kZ/DeSxEOeQluShvg7LSg9TEhrhFmG8BMG4hVawayKZAS/JWAWyJc8x5XvMewtSgzB5/bLmOh7NG7jJBtM7h7rDUlILrHo1ZrY31DsCpmZBjSjBgnf48vWSLSrqinDdV12XucmIuwLZ/DxkwanzZa6O+iMRg2xeBYm9BCj0k/WoOQ4G0iGFA4vUp08HP+yYrIMS1aALlkw+F6E4/lMsHfv0QRzrg4gLNhpCs9yGUXIuh0uoUuq7kSIc6mPJ7ZNHPaTkxMjA8NDX1rjNnivPcFIqMR7Jtt4M1yAQd6K9hdq+NIo4W5VA52yXJkGwLmG9r+DUOEYDMEk+/xiUl2A9iqPdcToUiE92frIZqdpQIO9FXwI+fQLqbgnNPSv/FWuYVAw1EbdBQxk5OTXzjnDltrVTIth+D5PbN1vDA1jaONNlYZgw2Z0ANV5UV++7fZNU5XOvbeb3fO3WWMuTPpqFrBx9tz+CGaQ0+L8ORMCe9QKfSlpE3/30juUZw/f35a8+C9H9O+LiKxB5zKpfNi7DHhYlUHsZP56bzoPRcvnpifEuogMQDrTdTf3/9gPp/fb4x5Oixo4wJcmoCUB5kyI58hgSbZkwETg0LbX5QE0qICrsZac7dEFHra8PDwUwBeAzDKzCnvBdkM4dmtFfSULbxeECJy+232xJYNxW/S3PkXogXAlkicXDEkB28m6ORwoVso0XoADxHRujiWFVevxxx7/Nls+1Notb8GLn//Xzn4G4sCQh3kquqDAAAAAElFTkSuQmCCiVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAHNElEQVR4nKVXXYgkVxX+zrm3uvpnfnp3Z7MMrknmzxknxo1ZgoHkJaCiK4IaTDSICusviBhFQTQg4h8kMfrgk4m6mLgP0YTFPKkPLih5iFESJFl2ZmjYlawZxpmdmZ7u6a6698i5XdVT0/ZsFnLhdlX3rTrnO9/5bcK1FwFgAC7/YWZmZhbAO0RkTkSOMjO891eNMUtE9K+lpaULACR73ADwhe9DFRy0OHsZs7Ozx733nwDwYQDvJKIRov2viojuXQCvENFz3vunGo3GxQKQvhHXA8DoC7Ozs2Mi8m0AX2DmcVXifcCkFnnOBLgCWwpMWXHOdYjoTJIk37106dKVg0DQEOUWQDo9PX0XET3BzPPOObUuJaJcZ7C/qYAEGOW+GAUmIuKJyCoQEVHlX1pZWTmXy74WAJsp/zgR/Ua/e+9VsSk+qzcdEZyqlDHChGdau8FfA0uBOGa2yopz7uuNRuMngyBokPZM+W+V7iwGTPFh3S0RnChFODtRRxWE0+ub+GO7E5jIo60QdSEImdkMA8EDPr+TiJ5U6JkMU0TpCvd6uO0FOyI4xBTO8nRRjQVG9Ja9984Y8+jU1NS9mfIgmzOZMj8/P+q9fzI7kFyGfiSZ0FGi8CZnLAR6CP3f0uwZFbArUgQRyPPee2b+hWZVjpPzdOt2u99h5hn1eRFdV3p8/ezQGL5XHw2CVV6OvC+deqC+OTaCXx6po86Mtsie/zI9RHTIe/9oZiQF1hYWFiaJ6MuKMAu4IFSRlAj4+aFx3BOX8IFyjPeXYzTF7ws6vd/xgrviEj5SLeO2yOLxw+M4aniQCZvpuG9ubu6E6g5n3W73k8aYqqZPblge6Wr13eUIWmF+39rFS0mKCu0FWx4PZSJcTFL8qtnCLgRvjywero/BEPWq2V5q+CwrPt8PEAD3auBRVt6Ugi0veF85xqlyHNzwp3YHX93Ywn+96wdJEUAeFw9tbuOpnd3A3rtLEe6vloOs3BVaS7IM++Di4uIIz83N3QzgVmUmDzyfUf9ArQKtMZedww+2mqgyIcZ+64sgVMkRZjy2tYOXkzTQ+LFqBYe5F7xZzCgAffzGJEluZ+fcCSKqFoNCg2chsrglsuElLTSvO484bw7ZtU8tZaWRelmhLji704YT4GZrcLIUBXYKRUezgdI0Pan65jLmgzy9SwSYj2woLJrrL3QTxLSnUHP9MHE4JwHIERIHpA7oOo00wktJgjXvUSFgMbIBzJC6P29FZGIYnTcwIwLhqne44hyiQuBFAK54h0bH4ViF8Fqc4BghKMt77+qOx6rzuNEY3GDM0KZDREc0xYeufoUaEnBlJqy0HR6e3MAjn07xkPeIA8Bec6rFwO+eN2g9D3Cl5xbOdi5LK5A2VgVw9f+QAYG+BIJx5sDGmkv3WFBhjjBxzGF0wgFNbcE90RpepVjw3hnA/M0g7QCX2x7NDlDinvtCsBFQMtjUlrlc0BsOLQFLqUPTC8aYcFspwj+6KWqFOAjqhBFFMUyZYDQY8jMGJt/C4M820WbgQ4nDHd4E1ylD1Rh4cYXw02ewZI0xLydJosODBrlWItJC80qSBhC3lyw+WimHIpTX/NxSYxnWKp0CM9iPax5S3w0Wvw3AYjZB6XuRAS8cZ1l6zbzIk5OTy0R0IcuEYIbJSuvTrXZArBnx4GgN694HBtRvmThwuYq4No7SwI6q4yjZOmJbh7d1dHg822PSsXWCjbYffE/rgj1//nw6NTV1zhhzIk1TLZOsqJX6c61OqIR3xyXcXysHBrTIaE53RWDjEdhjx1FtDmHggKUM2IhRHuukNVvt9QJr7RnnXD5y5XEW9rc2t/FqmoYK+KlaBWcmxkPDmWSGsVGQKC6FeHed2wM+hRBT7ehE0JFPQo8z8+kMSEhPPVBrJwzjkfoY7oyj3jRKwH+2HPieEma+OAbflH0TyBswIFFElKR+IxK+JbeYdPoVkVUdnfKqqK6oEmHdeXxufRPf32ziYuKCK95qDG4y5uCB/zoX55NJo9F43Xt/OuuI/fqjILTI6INPNNt4YG0DX9nYwo+3mvhrJwm/vxkQnF1Vj2k0Gs85575WYCEwkee+zn46nv2l08WPNpt4trWr5RS+117fFIAchG00Go/p9Kogst7dH6HzwVPnviOGw2CiaSoHbxncgbDeNdjF2L/SDISOzveJyJoxRgNSW7ie+fzNxAPGELhEsAb9HRlIVKJUr9YSDW5jiGHVzVQbBiAHYZaXl592zt0hImc1LhRIlqbwXlwlhnvh1Za73Oi4XQfXbHu33fKy3RZqtmD1mjppDm7n/RYMNZnxB+CmtWv9Oe3/l5uZmTkpIp8BcIqIprWTaGfrdAUjVcZojUMNV2aZ8O9Kmf9863T51z/8xuELI4NSq0ZQGwFNPruqX68FoMhQ8JfOcN1u96T3/l0iMs9ME2mKkNPOYylx9M/1Vfd34NLGG8jtr/8BCw+o4/TGkz4AAAAASUVORK5CYIKJUE5HDQoaCgAAAA1JSERSAAAAMAAAADAIBgAAAFcC+YcAAAtdSURBVHicvVp7jFxVGf9937l3nrvT3b7oltLdnd1SixRQHopRWyARCcQisRIQCYmhKCCoRHwQ0CagxqiRCAQM4h8aQBElPHzwMqsYC4lEQIjY7q5WKSmFtvuax517z2e+M/duZrczs7OVepKTmbn33O98v+987zuEwx8m/owaLx533HFLK5XKMmYeFBEGIPpJRLtFZN/Y2Ngb8+gwAAJgde1imdAHFzt0Q8QbolgsLiGizQDOEJETARwLoIeIco0PiUhFRCaJaAzAS8w8EgTB07t37359nlCiIwWAYubdBoODg6cS0TYiOpeI+hoYdbOJNImovl3yaa2dIKKniOjOXbt2PRGvc6fW6Wl0CoAbJH4KEX0NwHnKSMyw1RlzyC1oJwxJw1rDzAngHcx8886dOx9bzGl0AsAR6u/vz3ietx3A54nIt9ZKDCrR4aaokSBvPiS+rXjUThTMfbVa7bpYtRYEsRAAD0BYLBaPJ6IfMfNpUeToRQ1GjFbMl0Qcd3llbIGNEONkZhaRf1lrLx8fH38i4aHdPm2ZHxgY+BCAPxHRaWEYKiFZiHmVyowIjvc9vDflo6pqtjAA1hlFke7Rz8yPDw0NXRUz7y0WgGN+aGjobGPMQ0RUsNaGROQtdGqJ5LfmMrh3eS9+sqwHXyjkEYh0pK9E5DXY1G1DQ0NXtwPRDIBpkPyvAGSVWDspNA5dmCHCZV11LzohggtzWaw2BoF07DVYsVhrIyL6QTsQ8wE4NzkwMLCemR8UkYT5lqqmDDUypd9V2v8Jo9mHqtKcALcH4TxaAmJwcPC8GIRpRcPxsmbNmiwz30tEXSIStdtHKalUnRtpIFgDMC0yu1MrqZcb1rQBQbE63VMsFtc2eL5DADjpp9Pp7cz87ljnW9LXxQetYI3HyBLN8XVJMGhluBLrwnrfcyrWDqSScrkI8woAd8WP03wAzt+uW7fuJBH5XHxsbZmftIItuTQeWt6LC3IZ93sBac5uNGUFmzNp/HJ5Lz7TlUMldrdtQBgVKDN/uFgsXtToxhMATgxhGH6Tmf34WsvgdMBafLo7h+/1FmCIcEk+iwGPUV3ARVGsxMuYcHlXzn2/vtCFm3u6OwHhTgLALSeccEI+CYAcI7HDw8PvYuazrbV6o6kw9eKkCK7qzuOLhTwmrLg57Blc0ZVHyQo4znOackB16V+Yz+LklIcpEbxprfNSt/R0O+NHewBWs9yZmZkLVOibNm0yvHXrVnfXWntlnJ/YVsyrzp+fzeD6Qt5914UrDeHpSoD7S2XkmWDbMKHJRxcTHitX8dOZsjsJlaCCuCiXxTXd+U5UUQ/iSgU0MjJi+YEHHoiGh4cLALbESdUhXkdRVQQoegZfWdLlpKhK2EuEB0sVfGr/BP5eC51htpNhEsLfiCJcd2AK35+cQYHI0VcQqlYfzKTcybRwfepWNdi9p1gsvlNl4taJyBlq5a18Pscu77KuLFYwue9LiPBsUMONB6fd/a7O8h23Jk2EJUy4daqEn5cq6GFCGAe5bV05B7IFLXWp6mB06ZZZaYvIWUR6zwFoyvx63+DcbMbpvEZatYXtE1OIIEgtsgpJNulmwrcnp/GPWoQurnu201I+NmVSc+LIHARxMaFCnwUAYKO1LkVvqj5lAc7KpLGUySVmuvF9M2W8ohvPiwGNzy0EIhXb1Z3TJaRAsKgzfU4m0+401Zj181hVfV67dm2vxpRW++pGOSa8P51yUddX6VvBb8pVZKm55JV82AGIUFWPCX+sBhiPIuSYXSKoHmoVc6vcSVVFT2IVEW1gY4xGuEKMau5KTQsEWE6EQc84X61RdzQM8c8ocrosLSTr9LpRbKTHf+j0qR5XXghqyMZ500pj0O8ZBGiZwYpmrdbaVQpgIC7A54ToBEAIwQpjnKqooSlzr9YiJynTKk0gwio2jul6WgmUQyCMmk8B8EotdIBUjRSUZq9tTlH1Xe1gvepTy5JQRxRLUw1Xiesmr0eR8+nNhhJTO7lrpoSJQJBi4GEuoZyNcFQXsCQP9MybYQi8VrOzNJWG2lv7uFZf2lGOP59OO7quhGTCLyYqCJYG+MYnInzAC3FmsypfgGwK+PXLhOceSc9RgQ4bRKLVz2y7o12FlRiUbrqUuW0ur+RMSNhwYg35oyOsmCSwqT87f3gEnHdKBHkeCKYArflUJ8ok8FjbFm24F2Ev7piVtfKabwf1tJewN7KuxlWjVb18h+8hzW27DRBSeyHYKiGI1PfFAmgEijoN3Xyj+ECJQb6gCsLLExaTQZ3O/H3UCXXnRBsAo3oC+0RkmogUwNyFqHuJt6zFa1GEDb7ngtqw5+FoNtgTWaSofd6fynpIC7WUJLmUBOg9JwTKU8iwIBJgWzXCxZZhGujrCfoG2LMffM8TsDMl2eONjY3tKxaLo0SkqcQhnkg9zQEr2FENcFLKczFghWFszqRw93TZudWmPQ/dLGWQyhj4YXtVcGNj4FSHpL7nR1yid6hqRxaS6SYKrbz51Tvo1ST/+psmSM1yISdFAp6sBLg0n3WBTNPmT+ZzLqtUQHq/mTolnTvtgS1YzJfrzCc9xQnUWzHznwstZCUTbezHTmDXPscsEf0hjnDNIzER/hrU8PtqgAKTM+q1HuNLhS6nUjqaCji+Zzx/4en74FR9mpQPP+UjFX82zkzas8YQNhxjX1Dazo1aax8noilm7m6mRo4JAn48XcKZmbQ7BVWr87NpjIc53Do1g25idxKJOrlw76Xgr+xDd8UHL6RCnQ5NvzMhjgpen9KfriIbHx/fS0RPakbaLLFM2oPPByHumJrBspibgyK4tjuPb/UUnLHvt3Y2ErNYZPIFIJOrq4Ju/DZMNzI55Fasdj9m5SIit8cq1FRWikrV54fTJZeJLmd211zjKl/vwp2fyyCt16y4Ewp0ww7C6aKH0tTAEquQ6/0cc8wxI7t37/4LM58c94OaVnYaC26Y0IgDVwZqJfVWZDHgGXy3p+CyypeiEDuiKtYa40zxcN6idDqSVIJGRka0F3oDgN+2iuQSH4/mRTcenMK+qF4GUlzgaLDrY0YxlcaWnhS8TMrZgnYujtTg+NNJfHR09Hci8jNm1gAXtQOhJ/GdyWls2z+B54Iauomw1LCzlwOROHBaRx/p4c3nTUSutda+n5lXt6qRE756mPFMNcCfq4ErA7WSOjnlY6XP8Ay7k/p/ArCJRyoWi5cCeKrhXVVTTqKGYv6pSoAnywFWGcZg2kNhBrgi8HE6MrBim0bVt2PMl65TpbGxsaettVfr25KFXn8mN7vjToN6peeDGu6fKePFoOYaXe2Svv91NHOZCsIbHx9Xt/pZZuevlIe2fNjkwThmaBGkdnKkB7e47l4mjI6O3hZFkQOhHYtWht3srZ0uPJKSh8uc2r9jcCDGx8dvE5GPAthrjDGL4U3TD+20OkOSBad0Mp2M1LnQ3O50OxDqXh8yxpwuIo/OO43WQASYrgg4S67q8kzz6XuwvofIM0SdTAg85DwWwaQ7h04k2fi+dnh4+BIRuZGIjm0Qjb4MSdIQ9y0IBX3LPNz+5dVY35+CDV0vx50FMyyBJLJimFiTHBi2ge/RQu8CtYbUHV6sRubjuZMe27MYK5v9C0BfX18ul8t9TESuIKL3JUlW498M1PlUA3FSXrncU42NwSVJWb1WMAavrOw1d19z8YpHNp/ql0qVNOUypoXXKwG5HKj/4T3JlcNxE3Penq9bt+5Ea62+gDvDWrueiFbXW5TkUmjFU6up8s6e1l6AdlnBM5Mz4aPTB/79bPxabVGj3pxzJfNhDdKXC5o/NV7Uf64YY9Zba/tERP+14hrNRMLG8KgP81ohk9m546UX30iSVD2Mm27a5H0dmy2g/2ToYGx3jDsK/wWLznSb6j9S+gAAAABJRU5ErkJggolQTkcNChoKAAAADUlIRFIAAABAAAAAQAgGAAAAqmlx3gAAD11JREFUeJzNWwuMXFd5/v5z752789qH18RxnMR4Z5fddeIoJm9asjykKFFQm6paRSVJEYQQoSQUhNS0qQIxhRSk8o6gLlSCNjQQt2piKShqJdAKWhLRCAdisrF3Nw87lBDs9Xpnd173nr/6z5w7jMc7M/fOrh2OdDUzd+495/+/87/POYQz09TU1JSamZkJAXDrn+Pj4/lqtZpxHEfLb601pVKpcHZ29thanU1NTbkzMzPSj16rv/U02uC+VCuRk5OT2yuVyk4AlwC4DMAgM+8AMEBEYdO7ARG9wMyrRHRAa33Add1fXnrppYf27dsXPSfN2UggaCM6sUQ1iCwUChcx841E9EfMvFsplWl+mHlt2olOJUdrLYzOEtETzLx/YWHhJ03jbAgQtJ6X7YwLAbx9+/Y+13WvY+a7ALxLKeUKo5ZZzcyafschtRnbqAQzs33WkQ+5bD8HmPkfMpnMY88999xra4F/NgFwooFHR0c/wMwfJaJdEdPMHFp+1TrGMeBa8AQMgwsz/xrAXmb+4sLCwlLzRCQdgHogqjHY2NjYVVrrB4noXZbpSCTXw3Snpq10OEopGe8FpdSew4cPP9KrNNA6Zv2TzPw3ROSFYSizHRnBxIP3oMSCQyhqZiXiESL6i7m5udeTgkAJBjUdj42NbQvD8JtKqevrNsoMJv8laoJUYJn3epVfawQd8adaH2Lm2xcWFn4MwLXdx6IjTnMt81dqrZ+2zEf0J2ZeUC8yI03GF2KFuW79kjeh3wmCQGh5CxH9oFAo3GGZd+PS0q0ZNC3z3wcwLMwTUawB1qJ4mRl/munD3bksfAL2lyr4wskivBY3mLCJJCqrinfOz8//YxxJUF06dVqZt9a9Z+Zltv/QT+HBgTw2OwppItyVz+COXMZIRSIjcjqtxhAT0d5CofAhy3xHCVVd/gutpW8w34vIR02mpsKMa/wUXCKsMhsKi5pxpZ/qveNThyAbQEUgdKRZdbivJyYmtmqtH9sI5hEZDAIWggABs+ksch3VNtFhryBEkjA6OnpdJxBUuw7kv2q1+i0iOpeZu4pSnI7r9wm/CvVpRq+T9vcQVJjHTQSl9bdkIiMb0ZXO6elpI/ojIyP3K6WuC8MwtkVt7lB0vR3R4vaS9Cd9JZ4BQAn/SqmtMpHtwm/V+lsyr5GRkcsB3Ke1FoMXe1x5sCwRIYBrUinU2sxcXGEX4krMeJufwiZFWLJqk6BJfBDIRBYKhbvWUgXV8gJJ7g3g75VSqeherJGsbx92FL4y1I9vDg9g0nUNA71Ydhm0CuBNjsLnh/rx7eFBXOZ5OKF7AkFC6AfGx8fPs8FTgyTVwkN45MiRW5RSUzL7caVOEDvBjF2eh0c3D+EP/JRh4J58FmGPtk0IK2ptYoUhIpyjFP558yBuzvbhmNZJQBBSWCk1XK1WP20FkFoBIEFm69atkrffK8YjycwvMmO352LvpgEMK2UCHZGGa3wPN2Z8nEwoBZHeX+2ncH3aN32JNNSY8emBPG7NppOCoEQKlFJ/JrWKZilQTWNyNpuVPH7SAqDiiv1uz8PeTYPIqbpvFyMn4uMDuDufRZYoUahrykMMfDCXxrmOMsxH1Q8B5lMDedySTSexCZFb7GPm9zdlrIiYNDe01h+Jm5cIkWUAWxyFr27qR16R0XcTOgLGaM0GIT63VETSJoymFeFLJ1fx/VIFmxU15JYtCH87kMe1fio2CGLM7cTesmPHji2WTFJR0DM6OjoB4B02w4sFrGbGnoE8tihliBJbIG/LjM+Uq3jfsRP4Qbma2AgKldLXXBDgzuNL+KdiCb6kvZGu2ohSQNimFCrx9NVEiEqpcwHcKDempqYcU701zGj9HqWUZyO+jk3QEb2+Kd2Hd/f5ZhairEOyu/+pVHH78SWjHoN29pI2eSdDZMC8/8Qy9hZXMaSUGUNZ6bvAdXBXfxYlrWOBbCtUUlD5E/kyMzOjo9K1vH+TfagrmEJEjgi35tLG70elYCF4Lgxx74llk+REtqDXFpWXRM0eWl7B46UyhhSZPgXwJa1xQ5+PnZ5nJFDFC46Ev2ulrgFAG+M3OTl5gZStbeFRxTF8N6Z9XOR5xug1h6oPLhXxW60hQUSPOf4pLZIeSZXFnhwNtTGucl+AyBPhtlza5BZx1MBWkvqZ+eoGs1K3J6Ksrel17EceEOZE/KNBhZB+IjxWKuOH5QoGqT5LG9WMUQRwNAzx0MkVpJVq+DGZ+Xf3pXCh6xq16AaCNYSi8rsbAADYZWtrOo7lH3NdTHj1KI+apOI7xRL6Yri8Xsoexr4ohSfLFTxfC5CxvUi4vUkpXO17KOvuatCk4rJQ03j+ipY/12zG+GiNq3zPEBOte4nu/6IW4FAQGN3vBkCv0mGMr9aYqVTgq/o4dbMGU2RR8ZAVOyCfO7dv3z4YATAQ2z0RYXfKMy6Qmu49Vakag9hVBK3etj4Xx1P8bqyaqR9E6Z24RJFICZnbJWCn9cWc933fVSMjIwOyVmdR6fquWN/BplmuR22M54PAENeJkejZi1LeKc+ayjCJBHa+pIMUEV4KAixq3agma+uVMlYqYhhCkfbBIAjGRQL8JgloCwA16ZsYnKiCI4AsasaLtdAQxzFm8KVaYIgXpuSez4SXqxrlAAjC9lctFABg8oCXgvp4sHQNKoXtlq4YEiCxgNjyQVcpJVWTWDX0CAjXEh79roJj+WFtxX9/qYyLfRfTXgahYhzwKvi2XsF5+TqgnUBcXAZKQMP9Rk2+d3v3NF6IArcXw9w6SNIloZQiPHCsiAPnlfGJmwMM9NfwdV2f3XYMiMB5DvDsSwr3ftcxv40ANL3QQ8RJiQFYq65UX8atExm3MKoCwmXvLCNT0NDLBE91D5xCDdx0lcb/vgyUfkqgpkX3dsvNHWlhJuW6rowbxE1QJPc/0qJ/m5LpnwHKcYBtOYKuECT/qmog6HIJAEtlRmFQ4c0pB1XFRvRcBSyRxv9xiLRDcBQ6XpZ0iYlq7uzs7PFCofACEW2zgVDbTDByOUtNAYcxYkQYcx38uGysazz0BTzdWP8GxZAeeaYGxvmhg+GSg5oAoOvqJzS9uKSxahlo150Iaj4jVOrXwzA8aOwGM5fiEG7CXuvyriO/TrhNi69IefiXLl5grf5cTyHFCiqOETFVC8aucQU/VQK79eKLMEFhiA+XqKMhlDEWi8D+p4BiCZXzcrmKsQFE9DPJke3ae1c39nSlitVcpiEFYpEvS3nY5jh4vck/d+RFjFrKQV/Gkc1B8QCwRPijDD2xcsry+oVSy+syiZqBVBr67ReRc+dDOPSTg79cjAB41n52TYSisPfFIEDBcUxuIHbgHMfBH6d9fGl5BZtt3t6pGcMpymtVIMnCkK4CVDlV2oSG43FALzNfPeFg5wX6FyKwhgIiOqi1dBuvDrisNf6rVEFfU1YmFdzbchkTkrb66I1uja0YTZfUtroZPzG8jiKqhYxzhviA9GVSec/z5gHMWwnQXaVAKTy6WjbpabR4YLwBEf66P1cvtsWNybWG2N6zcmmNMNQybcH1V3jPyPiu1MVmZmaqIyMjTxDRpNTNiEytcG2Cbez8ahji31bL+Fg+awogpkLDjHf0pfBX/Tncv7RsaoWdEBXR93IDyOVy8W3A+hpzUKHyycXaLW8PF28VAOwOTFGD/2Dmj8dZCjMhrVJ4uLiKG9I+LhRbYKuz4o6kZC31ASljiUGUFDlo9UVSNcoOwh0+F3qVTXB0ppvYADeXBzkpLL463yiLS3ou0v8MMz9n7aCOExTJapAULNHke6NYQSTjC0P9Jkg6Xq80m2ca5TPJ7DJ5QxXr8OypQRjATWcwNDl6Sv3PmZubqxDRVwWJqGwUJ7H5aaWGTy0VjXeIQnP5FLV4T9rHI5uHcHM2be5JCiuSUeNWG3EWpv+0saTIhgYARgqY+fEwDF9XsgkvRm4hL0nZ+zsrq/jE0rIpYUc6byREM4YV4e8G8/jXzUP4y/6cWemVhQ4BIXYKegab25yjLCws/GbHjh1fIyLZAxhrX4CAIOuBD69IkgqzbCULFWITXOsdKpox4jrYmc/idmYsssZ8OsBbXMdEkWfH/q3dVNN349LDMPxyGIZz1hjGqmxHIHx3tYw7ji/heKjN70an1i6ICkiMINWby1OesQ+xV2HPAgAstLzyyiuLjuPcFycmaAVBVoVmKlW899giHrESIeWzZiRNWaxp18cb3VTL73B6eloM4j6t9ffsju8gKQjHNOO+pWW897cnTMBU4vp9uaTo0dMeuzPUqM09mpiYGKpWq08RUaFbmrxWB4KsiLsYuwtdx9TtpXQtobIsow/WCLmP5+Fe4oFX63n9mW7icV2HKGQuuR7Gadd/HllrMowqyPGVQqHw5wB+1LQyHUtdo2UrCYAyBLwWanxvpYx9q2WzbJ5xCFtqCg8GaVxCspfojTOEqs19M+Pz8/NyQuPDTW4xUdlNWyBE7MVdStwg6iAq8t+VqnGTLWW9s95Uh//MIuz8/Pw3mPnOXkFolohIjyQ8Fk/w+2ALVJf/TSwgG49bQOh54TdCcMOPf/XYVIxnTgPBZosbuQD8hjUV8zmzUdOCcAMzv6qUik5m9DyRG7c9OPnQ0ReV4CWzb3B+fv5Jx3FkB/mTAoJNnqLDE4maVGik1C1A9HBx0gsE1salc8Olq4Q0GxAOHz786sLCgkjCPQB+4ziOKczGBUKCzGoN+NnhMpy8gus0law6X+y5CB1V9+dJL1mPcQZTCormQAOvmTXSpLPWBJyxZ6Ojo+cz8x5mlh2mvuwy63ZkTv4KQ6DPJ3z2ni145+VZU/NvQwxL8ZKUbOqAq0jyB0afbAtKlkYwOcSUUocU1Ido8olnmD8Zc0tB+9Y4oTU+Pr4rCILbmPk2uxXNUFxfSmgchGxc8isIGNWAcf45Htz6iquVHpYKtuxmklOTjcOT0FzKZunfL5/IPPyZuzc9X6qElPad+KrnZxmjjx81m2Hs4jRh/S2KfA0QF1988ZaVlRU5NnsTEV1LRI3NF1GdxX7KzNYrSDVTFm9U5esM198JQy1bCp4OQt7/2jHej+rLs+sl2Mw87TGzQ2fgxHgjeRL10FpfCeCtdk/OTtmZQUSbms8dRcwys5z7k8rUIWL8XCl+1vPdpw4ePDQbeYxHp6eNAZt+dJ/GAz3Qv8fMekNqaJ1Mr9Vky71UmgXhUwImOTYfhqHs1x1j5qHo9LhoiCxU+r5/sFgsVo4ePdq6xtG2z/W2/wf/AEMCDaHshAAAAABJRU5ErkJggolQTkcNChoKAAAADUlIRFIAAACAAAAAgAgGAAAAwz5hywAAHoZJREFUeJztXQuQnFWV/s79+z3TmWSSTAwhAScTKMNDrSiEBE0IL1EBKRlQt0RdRRFcXNRVV3c3ZNdiy8VHUMG1kFLjLgpBWXBdAXmlBBHFdaUKKpCZAAkQ85p3v///nq1z+/6TnmH6MZn+e3qSOVWdzvTrv/+93z3n3PMkHHlE9lmtW7fO/z+2bdvmTuZHuru7nX379pV+3yt5m3GE0OgNzvDx07p161RHRwdv3bq1dKFKyVm2bFlHKBTymHnC+yYilvei0ai7ffv2g+Uuum7dutC2bdsEBHqmA2KmAkAW3JloV3d1dS3MZrNePB5f7XnemcycV0rlAawFsIaZc0RU9r6ZWd5OA7iTmUeIKEREI67r3iHfPf744w9McF3HPuuZBgaagYvu+ZO8atWq8PDwcBszn+Z53hpZCCJ6PzNHASxQSoX8LzOzedRKSqkxf2ut99vff0Jr/YTjOG6hULijpaVl6Nlnn+0rFR1bt26dMWBoegDYCS2dTOrq6urUWl8I4HwAbwHQppQKy5ta+1zZLProTrW7fuyqViBmLhUl8nWzy+VnfAaite4non6t9b1E9IBS6vGenp6hku85zQ4EmiG7nZYuXdoZDocvJKLzmHmtUmpO6a72F9tfKP936jgm9p+ZWZeCQriF1lre30lEv2DmMWAo0RnK6SfTRs0GAH+Xjk5UV1eXLPhnmXl16aLLDrU7UU3jvbD5pzgWAQNZMGgiekkptQXArTt27HjFH2N3d7eqoKgetQAYMzEnnXTS0lwudykznw3gXfKav+jmw0SqicZeSuyDQdiDAFRrvRvAXY7jPLRjx45fyoc2btyonn32WWoGIFCTyHgzEStWrFiitb4SwMeUUvJ/n7XqJl70cmREhYBBuIIAmIjuZ+Zv9vb23l8iGkaV2umg6ZxQsg997LHHxqPR6Bdk4YnILLyV6aNydgYTW84lQDDzbYHw1d7e3kfsZwTch7TXowAAsqieL+MBfJGIzvI8z5enM22310QWCOQ4jmLmNBH9GxF93+oIynKChnIDmq5df+KJJx7jed5mkQLCHrXWrq9I4QgntnqCtTW8yszX9fb23jl+czSCaj4X10PW2//qrq6ubs/z/iAve54nSrNMSOhoWHwhC3T2PM9l5mOI6I6urq47ZVPYxW/YXDRqwg2qrazfQkSX2l3vH5+OZmIhEQuWG1zd29t7T6N0A2oUy1++fPl6ItoIYL3semuZOyp2fK1iQSklmyFFRDcODw9/be/evamgRUKQC0C+QiMsn5l/RERx2fUlzpNpJSr5f5PYamW3K8dxBBD35HK5q3fv3v1qkCAISgcwGu2iRYtaRLZZz1rMEzV/mhdfFtrXNAvMcBmQ82aTKCBm3lzXFd3g4mg0+tTy5csvlsUXm0EQFwzino3cWrx4caKlpeV2ABfLwjfL0U4Wf4g1IkSYR8psOXns9TzMUWr0LNYE5OtH4pr+gOgF1nA0qcCWakQNWHw53gWC3slSiIB+T2N1NIKrky14Qzg0ygXuzmTx/ZE0XDAioOmxypQRCTY+IRAQ0FGz+AD6WeOsaBTfbW8zf6eYIbY5CRBa6Cjcm87i2v5Bwx2aiAIFAR0Ni2/YvmacFo3gh/PbkGNGgYscwWf38vciR+GX2Rz+5uAgWhQ1iygIFATqSF98f/YiBFydjMMhoAAgbKFP9iHvH9Aa58YiOCseMdyhKY4qJXPMzAkAt4tiKItfD8VwqgCgZl/8orYPzFMKbwiHkdbFhZ1od7MAAYQ3h8OGSzSVICgDghIL62H/6OESbdy4keSo16yLPwal9thX9MeVJwaQmUTs4HSDwLrSnekAgNq0aRO3trZuaebFN0RFABj/cpV9TY10kEwRBER0e2dn5wY5Mh4uJzjcezWWqc7OzksAXFLizGk6kr0sIcJ/8Tzck86ilaj5AvMmT+JOdi0Ivnzqqae22NcpcABYpMnib5CYNxsg2eSbpgiEfPPJ9cMm2XB2421IpVJbbOT0pNdhsl8w8yeIE+Qxc4uNyp0R8zojBjkJEkuh9a1cYrnxpPWBSQNAkCaIE+TNunObRhxo4ca+PjAZEKjJKh9dXV3vLZH7TqN3cBOdzceQb08od8QMkCShUbyHogf8wymnnDKvZEh1A4A5SUneHTPfYtm+arQHT577tYZqMmZO9oSRZcYwszEqTYMocB3HOSudTn96MlxgMgAIy+IDWOhn66BBJDlfg1qbc/ymtiT+qiWGYa2NVW+6yQHMop8eCeGHC+birZEwXnX1KEdoJAhc1xWufO0JJ5xwdq0gqAUAJr+tq6trPYD3SgBfo3a/z1IPao3ToxHcOn8uPpFswQcScbQrhZyefsWObdLKB1sS2BCN4pb2Nnx+Tqt5XayJDTwbm6lg5nmu636hZHgVSdUS1SNyhZlr/tF6kO+Xl53/jngUP5g/F6sjEbzkuuhwFDbNTaKA6T3WKQAjmnFBPIq1sQh2u0XfzJfaWnHj3CTiRA31KQgXsMfy9VZXq7pZVS2KXzqd/lsiOrtRip9cVPzycm7/Tvtc3Nw+1+wmAYNM6ggz3hmP4Yxo2Px/OhRDsqblBQaMc8xYQ5I5DOBl18O6WBQPLpqPt0cjhoOJ86lByqEvrm+WTKtq4roSAORLnvwIM39UUrQaufjiwPl2exsujEcxJJlCNqDDz5zwmPGRlhbzPB2We8fGE1yeiEkhAuT40ElAxplmRhxk7uHcWBT7PYlCaggI5FQgrKiDmT9mp0sdDgDMe/Ijkq7lp0QHMuQJFv/m9jacF4tir6dHY/h8kr9l56+Jhg37FTbcSFMkGY0fmK8ULm+JT8jm5e9cyb00EgRWFEjY/ZWWC5iMpIk+qyod+zo7O5dprT9uExtVIxe/dMLKDVB0AGG/woYbbebNMeOf5yZNJFGhzLUr3RMHzwVEXPvJto5kX0/0wQlflOIMsvklgUMpdYyf0xbUaA9nomQwefHzkzJsWFiuaiDrPycewbk1cJ9y9xa0TiAb1hqIPnzcccclra/gNWs44di3bdsmHw4x81n+7wU4VqOqegx8ZxK7pKgHFOXt+1oSmO84JtKnEZkuOWacFA6bIJNayn5MBAIxaIUDHqo1ES9USr21nC6gynj75Ny/gYgusFk8gW0uI8814xvtbTi/xt3hv3dMSOGxXB5/1z+EjNbmzB20fPUAzCWFLak0/nlg2FyzTSkba1ALCNjYCk6PRDGoA7cTsHUZf66clfo1C7ty5UqWHD6tddkv1Yvk5vuYTRyePCQmz4/VK2tylV1vwzpuHBzBJ/sG8Xguh7BU40DwxCY6U7gA8PWhFD7RN4gnc/miYYorT5ZMttSrEwvmtcm44V51DfKf2EQs07Khs7PzHbKxpTrJ+DGN+c6mTZt0PB5fTERvDVL5E2QNaMaaSAQ3tbchZWP1KpFMliRvCEg+OzCEG4ZGzHfmSl0eNI7YglE40O/zeXz44AAezOSwNORUTfAX0A/a+97c3taIE4yIAal1KOZhR0rTlL6pJlD+hG9cRERJv0pHvUdkDAwAEkT4VI07wSw+Ef6Qz+NDdsKX2QkPVEOtQLLj20oA+a9DI0XzdRURVsr53hGPBAoCywVkTS/u6upqsTGEo9Olxit/wv6Z+VzJWA5qXou7X+PKZALrY1EMeJVloSx+myL8Pl/AFQcH8Id8oSaWGzTROJF0w+AI/n5gyFgrq3EkZb2H/jG23FGyHsO0tYoWa63PlBdKj4Rq/Nlf2D8znxkU+/e16GMdB+9NxNDnacMBqsX0icb/reGUeWGeooZo/LWSD8JlIYX7M3n8OpvHQqXMmKniPJhyprhcvJvBmrQFAHEiOkf2X2kRbDUR+1dKSahXIJzVd592J+JYWuXo5k+sDOSavkH8Lp/HHEXm/N8si186VjnmtSrCdX2D+FUmi4SqHIBqMj+ZcVkijiWOE1guwngxYDOKxhZZFPa/cuXKVmY+Lyj2XzShsrnZyyzqK7EYmVCxtP0glcG9mRwWqCJgmpmULSf7hYFhY66Wsz5XmQ/hhpclAuUCxTLoRMLd19tahWMAIKQdx5HxrrbsnwJxnwriW+LmpishXnZOu0N4JJvDbcNpHBOsnKwbieyP2fv8x4EhxKrkGPocUeZENkY2uHsU07Dod2+WPx599FH1mjKrIyMjUlJdQFD3U5Ux3Ro56aC7Ctq5xOR6y3DGPI+WG5kB5NkTjugD92VyRizoKjqRLP7libjJSlIBmoalyLpEddsClUUlT5ot2A+dQUStQXj+HD+4IxbFMtn9uvLul7P9rcNpPJrNYZ4zM5M54kTYODBsrZvlOUER7BqXJKLGzhGQgmuCR4nobYODg0l/P5mFt5WsA91ksoBJIlOcIVchR08GECPCy56Hn6WzaHeUOWrNNGI5vVAxnO2OVMbceyUuIPrOAsfBWyJhwwUCFHW5UCg06obwy7Z4J598cgeAK0RbrHfgh3+DixwHqyLhinJO251zRzqDVzyvohI1U0TB1nQWL7keIhXuxbOGrjMiEbjBiAHfRSyBIh/yT36j1xkeHpZWKuEg6/KcHY0Y1i66wEQAMFE/VlTcnc6hxdbwmanEws0UYbfn4b5M1lgNvSpztCFeeY7qMCTR70endbRwUzgcFiuRyAYdRMy83NSaWGV0s90xf8wXcEB2f+Pi6AIjqXUeJcKT+UJFxbeUS55ehUvWQRE8wyqCWlqr+aFfZxJRSxAKoKBe2N8bI5ULL8iFRVl6Ipev+5l4utK+2eo0T+UL2Od5pv5QOVCbjUJkilelg7EJGEUQwNvy+fwc4yjy39FaZ+t/vUPHnDdFwkWTbhWTr5Rr+3UmhzYqzy4PZwzyWwErV2Xvy09s+Z+MiLXyJxrfMrgyEjYcM0CjVzaTyYxN73IcJxAAKAsAyZiZV+WII7YnGUTG/FG/Mcg124iwKhoJ0tBSFYBiHKpEvmXwNAEAkTn9BDRWqU1splmJHFi1alXCdwAF5WMRY04l54K8J8UbpIiDsErhBlxHj53sKHMCQWMjiEs1fClD96rcW6VYRxtSLuIgiHFaET/HcZy1o4kfqVSqDUCgHkCRgxUHZlngmI5Rdby+3HWtzhaq8/X9X5X7EoWwIrCNe7moMxWzIeo8iGKAiGz4UQAgn88bERnE1cTl+TrHwcWJWNksHl9OSozAn/IFAxYdUI2gavWfPInbCwAEEiQyyGxOODFMDAIzXyieBCrN11TJ5gwURYB9IVAlWX64aAQpP/shO0FPWQDUC/ulyuXP01ksFBf0BCjQ5ggKHGQ2ZWPF7aypyJKn8hivCP4xl68K8EPzFSiZ9W5Y8mq1He2LALECSlXPem7BogxWuG0kjTeEHVwQi2G/TTdzFCBSMawJHgGf7x/Cnrw2Dpx6aOFhG6osmPPvr5aFbZQBrKkqewXVMckstKkQyri2bwjfmEc4PxYxNoehLOCFNXRC4/qBYfxO5bA0WZ8jqKeBA0PSWRSYEy0CbeK+5dNHTQWAIMkYmUDGCXVt/wDOikVxEiI4b3UBx78lh4GYi6s04zMSxXOo5fDUrsnAjlcVbrnPwfbdCipSXQdpNB01ABDyTZzicv3lYAFL3pnG0nd7SGcJCU1IGmWxvit01ikaq5ZrXPPvYTz0AsERY3sTUUOOxKb1Z42fDVr2CQcYyQFrX8/40vkMb0RBuWR2q5yF3Do/Dg4DrXHgMxd55toSKFrP+Wp6DuArd+Lkqcj++JD2OxJgCSLRzPMusKpLQ1o0SYBpyG6DINoEREJAKgusWMw4fiGDc9J+vsb5QgM5gD0K1pX8og5yvvePd7rK+fc9iVhDyqpE5VxGjYkuNtZIxVgWVbgoJuFwxZoH5dzhkjFVab7qOKwiABzHkesE4gsw518xgNjzb7WMGWGRgaQjjaPpUMYykgxahc2IC3yQddFgFAwXMJFfSqmsDwCnp6fngFLqP2yX67paYmtlacp661ZFqzuNZhopOYJKKbloGK0OFQHu15MZ9zBGI4LpWCJ/TNUQNQ5vpsyP1vqg1vonZmzr1q0ziAjKHeyT/LiehNt4JkcCTejl04w3OmHMY2WUQ5R5kEfIuEBGlEhdH0VU7BClMZhEJE0qM2OUQGYORCH0vXziCftwS9xwgnIs3jhLpBh1JIzf5PLme0FzajayQBSz4PiNiXN0FJYlJRragwpNnNQon5Od/58jGRTiHjrqkPUsnRr3DRUNYS2xonFKEn9c1zVqyOiiW5kQiPotkytKXprlBic29/mhY3LTa6MRPJzNBbgoVvtjRjgSQiwWClzexEXJ/VAWOZ0xiSMTkSkuCeAyZryHJeV0apZR4/pj4LlXGJvvBv78AmNOwoAgEw6HjaiXzlO+zP8xM19LRIvqCYTxkT5XJRPYx8VqHmUDI2MR3DxcrLoRSCNH0yqOEYmFEXHCIBV8mrFZ3KhEXFccVjEuUrhmHe/7nDcRTjsBuOJr7D39ogolYnrL88/3HLCukCK5rluwaxVQ1y7CE/l8TYGR4j4+2cbHBxQUAWnWHZZDuoiARlVw9IsZVHlIB4BCHY1R4o8QY9SX30dwRBnQohWARf/z51e1tbUNA3jcsl0OIjDyf/MF07qlUpaMtkETH5URB3YIApyQE3AqTIXr1/CgOj4E5yMZ8IolpJZ1cKpv2PutXMZEBVskqKeffjrlA8CGDdWN2Fr4pDLWQ5miclcxPl5rrI1GsSZSrKbVrD0CZhopRSoWxsiBvfoxK4p4PIf1RW7dVSJTd87Ex+eLqWEVPms2JTOuTMaRtMkhR4pNYFqpaFfIAWpU1Pu5gWZDMvOPtdZ9NjWsrsxRFlHy4yTd+7e5ApIViicUE0kZG2JR/HVr3CRXVqoiMkvVyVHwSBGOna9vB17Y99M7TDnAsRwgEomkiEh0gUDIrCERfpBKm0LvldZUFlwW/qN+HaHAa+rREfookomxYkIsgkH585lnimVifACIHhDavn17H4C7gzAJl2YIP57N4bFszvzfqxLJ22IriZn8gkCMFDDihrUH1u4R+DDqnDw5RJ571fl4UF64HqYa7KFN1dHRYSKymFk+cFVQR0Iz30T4YSqDM6OVo//9WoJnRKK4eV4bPjcwNAqA+sgnMgtP0TAi0QQoFKrXDzcNeYUc3GzaHH0JxK9fGhlj8h8FgC0mLBbBx7TWe4ioMwiFsJQLPJ7P4e1RYe/lNX3xJh7QHi5KxPCM6+KGwWEsc0Km7OqU14o1osl5aG1vB0lwgKEjTdlguPksMn37wG4WBXes279UBzBioKenR/SAe4ISA6W6wK3DGYxwscFSucUsesfI2A/El3BpIo5+YddTCWcSS6DUFk7ORUv7IjOWogg4EsWARigcQ2vHEjjhCIezqTFTPWYOrRjwRAwwczqokDHPFn58eLQAlFMxbYxK2JV04JCq4uJelYYMocMS+QwVDgNz5kN7rkXfkasESnNRpRzE2hYAWmyth2jMApeKAWbeb9PEApGKkq/XYUvA/Vc6Y5S9SrG4ciueTa54dzxm6gtLSxYxLY/Vd2sg1ghHExIJUw9B0vxkOJyGisYQWbZszFvjdzhLuXgrBn4UhFVw9EL2WTT7Lw4MmzCwWA0xA7Ljpaq4NGN6YNF8nBOLmh6CUnhCjo7VgWADLZyjKiDaECmFSGv7mNdew+ItF/BCodD3AOwKkgv4ni/JhhUQCODECVoNcX4evfgXRCTII07KlJ0VBidLO2s+ro0mkvFGGXzuuedeJaK7lFKmuBACIne0pl4Wn+obNOFQtYJA9ADZ/dJc6t6Oefh0sgVzFWGf1kY0+OFoAohJi4mjhCZU8tavX2/mX2v9sPSkDTJ/QBZFLiAlYX+dzZmawLWCQNmHLLYkc143pxU/WTAX/9SWxLpoxLwnzqQDVkTIQ0hExXSUi2lGmnAepGmEvLdz5877ADyslFJBcgEBgcTnlwNBtZ3rWKVSavJJK7dPtibw7XltuGfhPNPG9VPJFhNoKhlBcoDc52kjQmapcmKIUbyVUl/XWkvzqEA3zUQgkAZLYr+WlnDVKob5CqJwE1lgiYGTVPBrki3mex9siZs4g/9zC9jm5kyrV25Qp7Fmpkr3Lzte9fT0PCK1hZVS0ozQayQIru4bNOVU/PKptf6GfxoQHUHYv3AGsT6KVfFtsQj+ZW7SlGJjA4CjWzOopXl0IRQKfZWI+m0F8UB556Gyqcq4jqVDiPTlEdbuTfLiPlfwOYNfqGmvOysCagWAzFno+eeff0hrvdkWGmxI3WaR6SK3pUfQRw4O4FeZHJJKmaASeW+yKPRPAXLDs0rgIapFBBpR4DjObSJegwgWqVjeTSlz3r+mbwCf7htEhrUpIO03mppV5YIHgJnjHTt2vEJE1wQRNFrxiGirxYge8EA2h4v29WPz8IiJGBKxMAuEqVGtSrA5Fvb09PwMwM+sdbBhJfz9fPmkrR+0eSiF7v39+OZQEQjSQcyPND4c8XA002ROQUWfGdHVYo5vpCgYo5BQsW27LPzm4RQu3d+Pm4ZTxeLS1qDkg0GUSV1Se2gWGFMHAEkmMTN/XIxs1lHU0Hk1u7wECMIRbhpK4eL9/bh2YAjfG0mbLCSpB/Q6RxkvozEHG8NSEUTuEZZ8OhWarB1ES5OBnTt33k1EN4XD4cBtA7UAQez/Moht2Ty+MjiMS/b347qBQdw4NIJHsnnzOeEY4nFsJ4VFSiERXD/sGUWT9onaEHInn89/KxwOv1Ep9R4LgmlxwPnZVmR1BFFSpdmCLPx/c840mZTK465NTrkkGUdh0MPZOQfrKA4NfVQbg9Th6mS7du3qT6fTIgoO2sWfdq7qs3e5KWH9ix0FB2RiDmX392mNm4dT+MrQiOlJQA3qON7MdLh80Hha9+zZc1D0ASLyw8eaZj5lIH7wkyiFIfssrVolBV1c0LM0NQePJ02IRR8A8IFmBIFPpacA4RCzSuAhmpImJK3IJXikt7f3nmYHwSxNTFNWhaUR8SwIZi7V5Sw0C4KZS3U7DM+CYGZSXa0h5UDAXKfy27NUd6q7OWw8CKT6mOOYIPyZ2P/5iKdA7KGlIGDmC0pCyhruO5ilyhSYQVxAIMai3t7eR7PZ7Dvl1OhIaa5ibt4sN2gSCtojIsYi5+WXX8729PRcJjUQiUhEgnCDaQ3oORrtgCz/kLTCOkSBu8TEWORfq6enZysA4QaPhkJSjaHY0hzTQFJBk3H0kB/HlfOKFUJ9Ug0O6jEiIZVKvUtrvUlOCZYbNEw3kIQxKRH4594syKtWqegIIWZWEaVJqV0HX9j7krxEm4rz3fAuqiIS9uzZk+7t7b0ewLsB3C+ZRxJy3gixIMWTWxMOHvtTCs88l0U0qZAvcMP6B9gOco17yOaSTrTJkLhGb1ty0R/TfGexQpiMZ7rgTxJYYhVFdHV1dQPYDOAYLf38mD0bdxjI+JQipDIeTj0hhh/fsBQL54fAKc9U0g5oQljKHbKEHjR4zp2w9KwLwUu59zov4TI8eXoB12+SMk3TCgBDwg1WrlzJkou4YsWKJVrrKwF8jIiW2PamRnTY+MO6kuMQRlIeli+N4HNXLMCZpybQmpAukvXrHSQ7UBqQMpOEJZgtGQ5xTrMp3x8ozzHxe0SaIuoFJtri/CT1Ndq0TfJjTdkH/3PNIgBHPYgnnniicIGPa62vYObjhBNYIHgWCHUbs6OATI6RyzOWvi6MeXMc2z9gSlQErTwThUTHkGDm1gQ9ccGZrd+98rL2Hfkh14nETZue4EgurchFX/wlWrPVNIcYv/jmY2geIokv8E8NXV1dcwCsBvAZZj7fRO/YmndWRNQFDMoUVCbkChpujUqhP4OHStaZYgRmcDIu+T2RYB7rV/IFfeuBv2S2AEb5mhY3OXO3A9paBOU4aiYA+ORncI0eV1asWPEu13XPIaILAXSKzmh1BZ8zlMrWw7on8vvrlGMAJavtv8Q2HFECj4tDENJDxPSYUvTgwjnRu37z1DO75Xe1Bm3d2q26u7dqXN/Aeb/elGUsy9aaEQBjOMKdd94pOgD7XEFrvZaIzmNmAcPrxbpowWC+ZO0K0hxpvMI12XvlMX9YewURlXZZMc9a6yEiepyZH1BK/aKnp2dnyff9eMmmNDs0MwBKyenu7i41KomukPQ8bz0zrwKwipnX2HoGC/3PWJFhyOcWNV6PxiueJYvt2sSYLDPf5TjO3lwu9/Ndu3a9WMLi/VPOZBOaG04zBQBjxMN4MIjj6cUXX1xARNFQKPR+z/McpZQAYg0z50QbZuZFwi1qVfJ0sWp6QRosEZH0Uvip2Ckcx3kik8k8EYvFpJra/tKxzZRFn8kAeE3GtzS78O0J44+YTz75ZIc0xfQ8Lx+LxVa7rrvWdrArZwBjmwmdKhQKW0OhULpQKDjxeLywffv2gxNdY9++fTTTFv1IpNHSmMIN5FHvC3R3dzv2d/3Tx0zePKP0/xXNNUyELWfXAAAAAElFTkSuQmCCiVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAvPklEQVR4nO19a4xkx3Xeqbr3dvc8dmdn57Er7i6HGq4k8IHA0ipxnAShH4miGAYMhxoalijxoYcjQciPOPA/y9Ef508QJIhixaJMUi/K5kiA4XckSw6TADECryHEIhnwMdRql+TuzM7ODnce3X3vrQq+6qrh3Z7unn7c7r51b31Ab89299zpW1Xnq++cOnWKyMHBobBg4/4CDuljZWXFG1a7rq6uxsO6tsPo4QgghwY+TCMd5992SB+OALIPb2VlpScjW15eXqxWq2XGmEzrS0gpWaVSqa2tra33QhCrq6t4cqSQUTgCsNDYWxl4uVzm9Xo99jxvsVQq/a6UclFKid/lKXwvwRjzGGPr9Xr943Ecr5dKJa9Wq4luCMKRQnbhCGCMaGEYbY0dP3PORScDByFIKfHZxSF+7XXGWA0G34kghBDqe/VACk4ljAGOAMY0y7eSxp2MXcCiOKduDFwIMTRj4px73RCEEAKf5T2QQtt2cRgeHAGMBi0HNwxeCDERx3HIOT/VrbEfZeCYjYd0H/hOcR8E0ZIUhBDXPM8LOOf7TYTgyGBEcAQwPLQcxEtLS6ejKPKllPNTU1NPSilPSSlDIpro1tiHaeDDIIh2pEBE+4yxgDF2bXd393HG2HXf96NLly5dTXzOkcEQ4QhgxEY/OTn5FGNsPo5jnzF22mZjT5MUpJRXPc+LpJTX9/b2HnNkMBo4AkgBJqCVDGR1Y/TNBp8HY++XFJKE0A0ZtGpzh97hCGAAYBAmZ/tejb5IBt8LIfRIBkZ1OSLoA44AUpD558+fXwjD8CyCeES04Ix+uGRARBsIIgZBcOWVV17ZaNcvDkfDEUCXaCU5Yfj1ev1cuVx+gojOCSEWzHtuph8uGXDOYfiXa7XaJ0ul0uUEETj3oAc4Auhf5i9MTU1hxj8bx/ECY8wZ/YjJQEpJnufB8K/s7u5+nDG24dyD3uAIoEvD7yTzzWzvfPrRk4FRBV26B841aIIjgC4M/yiZ7ww/O0RwhHvgiKAJjgBuB1JVRSvDdzLfWvegFREc9HPRkcZOsbwE+PAQMPw777zzfYyxPy+Xy38ex/H7MOtjgGHG15te1GPc39vhbST7Bf2k+wuu2vvQj+hP9Cv6Vxu/N8zCKbag0AqgWe7ffffd9zHGvs4YO9M84zuDt9s9MIpASvm6lPLhV1999Xn9sUK7BUUmgNvkfhiGZ4IggPHfh00rzvDzSQR6k9XzYRg+HATB60V3CwrnArST+6VS6TtCiPviOL5N6o/7+zoMjqRroPv3PvQ3c25B4RTAAcu3kfsobFE4UiwapJTYbs07uAWFUQO8iLP+0tLSTzDGfp8x9hNNAb5CtEfRgX5OBgoZY2o8YFwULUjIijzrI/iHWcBJ/eJCSgnix49eEdVAngmA6c6L2wT5nNx3OOQWtAkSKvWIj1HOkEvJC+l27733BjD+c+fO3UdE32kR5MvlvTsM5hYkg4QYN3r8xBhPeXQJ8qgADiTb0tLSPUEQfJuI7oHUd7O+Qy9qgDVcgxfDMHzw0qVLLzaPrzyA5V3yExFm/TpknPP1HXrMHYg9zysRUW5dAp53ya/lPgpP5k6+OQw9dyDA+MmzS5AHBeAkv8NQIXPsEthMAE7yO4wMMqcuga0uALtw4YLvJH9/kB0eDv25BHo8WjehMluN/+LFi6GL8vcGqTscI7UdosTnHHpzCS5cuBBcvHjRNKEVYHkwfhflPxoYkSVGJCTRjpSHjNz8f5ox4oyoLu0bHGN0CV60lQRYDow/ZIxZKb9GPevfQtozEZ3k/FDkyvz/hhDqd44x5tTA0cBpzBHON7SVBGwxGmf8fUAmgjwhSQqI0YLH6YuzMzTncdqVeA3vEU0xRpuxoE9vbdNGLA4+T5oYbBkoY4C0mQRs6Fdn/APM/JD9MOh3+j59eW5Gzf44crjE2MFnzHNdSqppFfCJzW16LYoUYcAdcHGBfJJA1gnAGf8AM3+gjf8u36en52Zo2fdpT0raR1o0fPxE70tJyvefYIwmGaO1KKJHN7fpR5oEQumUQB5JIMsE4Ix/AIAAtkTD+L8yN6OeQQYw8nYBE4xQjFSQA4wexv+IJoFZzu3NdhkdpG0kkFUCcMbfJzDCYOA1SXTK4/Tk3IyS/zB+uANG8rdteP1+XZMA3IDHN7fpWiyozBoEkdVBkxFIm0ggi33pjL9PYGQFOtoPGf/thVl6l+/Tehwrn/8o4z9MApIWPY9ejiJ6cGNLuQ9YHQgzOnAyBGkLCWQtE9AZ/yCNl/h5gXMV8EOkn/dg/IAJ+OH38Pu4Dq7X6u84tATD0jSWqLFUjSVrLF1jCTtrGYNZIgBn/ClIf8z+c5zTF+dmlGSv6qU+2aeawO/jOrgerovr+1mawrILZgMJZIUAnPGnBDN7w1hL1FjqG/R6uA6u14uKcLCDBLJAAM7402xMbaSQ7mkZK64D/9/lAuSPBMZNAAyFFVx6b/qAfE8T1le+yCgJ3NsoZMMKSwAvvPBC3eX2pw+MNIfsk8ALL7xQLyoB8AsXLnjLy8v3u4096cHIdOT2j93BdDiSBDD+YQfjssWx/FFTS+31118/wTn/JmPM7epLCSyxq89s4nGBu2ySAGPsHox/2AHeGEeNwXEQAFtbW1O7TycnJ09JKU+hXLf+Lm7S6rdRdRov9vPD+D+1ua1SgfF/l72XOTCMd4x7jH/YAexB2wXLPQGYoB/YT0p5AvbvqvamtwkIzzB+t403u2CN04qRMqhUsAkK5p0ADvx+3/dR0ON+Xa9/3MHI3MYAnPzPLlhj3EP2K3sYRzyAj8vv55wrv9/J/uHArQJYAwY7gD2MIx4wKgJwfv+I4YIp1oCNMx4wMgJwfr+DQ/biAaMgAOf3OzhkNB4w1Is/8MADqgS98/sdHPqPBxg7so4AnnvuOaHX+0+79X4Hh57jAadhP9qOrCOAA+nPOX+mqOv9ZhluaBSeU5hBIosdD3hm2K4AH4H0f4Yxdr+UsnDr/eY0HvQeTuNxiTlHtxemQE9vP/Z0+xWQBLi2FzV5DtMV4COQ/qd1qm9hisqaAYt9nm8Jqfbmo6pumbHiNEKfgzHWxj/DuXpG+5mtzQUjAqFdgdPDdAWGQQBeG+lfCBXcqKDTaNgqSVVN5z2BT0+cnFGv7wih6vUXbDAfCbSHpwuR3u179OTJGXpX4FOZmGpHtCfaryjtxhjz27gCXmYJQGcvxYldfoWR/klfHzP+phB0mnv07YUT9OzcLN3hcZrmrKECijKKe6w/+JaU6mCS/3xyhu4tBfTUyRP0B4uzqh3RnmhXM4sUoQmbXAGzKhCnmSWYumGi9HG5XD5DRItxHBdC+ptNOPBfa4Qimoze7fv0xNwM3RsE6py9Sc7pC7MzVGFMncxTpNmsFxJY9DjNMk41XYzUtCOe0a5oXxUqL077CW1Hi7Ar2FeaF0+NABCgWF1dlVeuXJkNguApIcQsiqMXQfqjRyDrsQPvlJr1Z+lbC42ZC1tz4cv6enCbUt3wdV267tsuE0gRBv5fQJK8QZI4jswoKbQn2hXti3ZGe6dd9iyLgP3AjmBPsCvYF+wsrYAgTzvwNzU1tSilPMMYy3X/mNnHRKxxcg7O3sNJPO9qmq2wMw+rAIhoP6Hfx8k7XnFmsbZA+4AMD84f8LgiSwwmGDlPqKp36fZFO6O9zUoBFaAdGWMB7Ar2lWZAkA8h8Gf2+Md5XfNvJfmTg3M9FmoGMzcvDgJcROd9n740N6MG960+a/bnL/BHqv1AjiBJRZZNJIv2XO9Asnl2CVgjNyA2ewXSDAjyIQb+cmv8GHAw4JtC0KKW/Eae3mgjT1vNdLmWSD0cY4b2Aime76CMjJt1I+Fm4YH2Rz/gvTzXP2CMecMICKaiAIoS+DPGX0ocu/1U02zE28xGxtfFSTsIBP72LE7uYSryXWQVgHtf6CI2YlRXs0vwVOLk424OP7UcIu2A4EAEAPZZXV1Vs38QBE/nOfDXbPxL+tjtd7aQ/LKLI7zmPa4eRTT+5LJfWZMhSLF6xOpIK5fgnboflgpAAuz2gODTsDvY3yAqYGAFABaqVCp3SCnvyGvgr5Xxf61p5gl6lL1JFVDEZUHTFoYIez1vMGhSYl8rCAkkAoJ3wO4GVQE8jdnf9/2v5DXw1874Bx1sfpfSN+/Lfmb27zUgOqx+sSkgCLsbVAUMpADyPvsPY5CZma+oy4Ltlv36QVFJIE0V0BcBFGH2H+bgkgVdFuy07NfvfReRBFiKKmAQBcAmJibekcfZfxSDqmjLgknl082yX6/XLhoJJFUA7LBfD5L3O/svLy+f8zzv63mb/Uc1mJLLgoP4wrYgOTqHEfsoGgmwhAqAHcIe+1EBfSuAOI5xqulCnmb/cQwiQwQwihOcH1w7TwFBs/SJ2R+G/4XZ41RhpDb8pEl2RSMBQNvfgrbHntEzAayurqrgXxzHC1LKvv5oFmESTUZt/Og9ZLfhbz81f4IWOFcqoNdlMRugUqIZ0Z2+R5yYIoC0t6N2QwJ5SxuWUtZhj7BL2Gcv4P2m/VYqla8zxs7lRf4z/TDryl8dsvGbGV4d6MmZmv3zNjBbVvyRRJcjofb9H+fs4AQjNmQS+Goib8P0dV7cANgh7LGf9GA+wNIfAoAsb9FpbDZ5egTppXU9I6LiDf7uS2FEH71+U6mBvJ3oa04uxq5IbOX99I1teimKqCYb9492qI8gbRv9upzDJVcpJYM99rMkyIu+9Gdk+L6OTj+hB8lGHKdu/MagEfiaZEz5w1dFTA9ubNHK9S3aECCc/NYNxH3h/nDPKxtb6r7xM9oB7YF2oRSJ73YSiFW/on/Rz6q/yX4SGHRJkBd56c8MEM6YikjPca4e+BmvpW38ZpdUWfu/mAU/ublNL0dRYzVAK5E8EwDuT9X5k1LdN+6/oQZw/w3yS7N68ij72MYlQV7kpT+zj3w9julu36cv68SUasqzgxlkqHCD6sDretb/kJ4BMSAhj6PEgM0jTDsYdwD3jftHO6A90C5oH7RTmu1gVJ7abMRI9TP6ez2OD+o6FHVJsCcFEEVRmJelv6Tff7feVnr3kPxDNBqui6W+H0URPaZn/eSsV8/BQOwWrCkGgnZ4WbcL2gfthPYKLe3vcS8JajvtCl0RAGqQ4fpCiLk8LP0lN6Qk/f40Z4Skv4+IN+oBvhZF9Mjmtno+5Q3H77UFzfGQU03tg/aaSLl9koqvOR5QygkJwD5hp7hdbbeDEYCWEQKyolKpfJOIsPQnbJb/yTTcef52VlpaPmErf3/YM5zN6EYhpREXaI4HnORc9X8edmNqNwDNpOwU9opmO8oN6NoF0LJCMYvNZNm8IQU56eWU/X6pHxhg17S/b3zcE0PwcW1HMkZyIhEjwQPth3Y0bZpmPKCs9yTkaDemGVZz3boBvEf5HxapDt0g6gLBplejiB5vms3wN9wZga3bDe0im1QT2g/tiPZMc99AnndjSinDbt0AXjT530sdul6Ba4AhsakHg+sTevCe8jzl50aJzzm0bj8gOogLeKr90I5oT7RrmGJfxTnbjdmPG8CLIv/7rUPXLUzDCCnVEhcOtMADP+O1tAZuEWCItF1bpuE+5bhIq+zFDeBFkf8Gg9ShO0q+NgJZHq3pBBf4tIhkO+Pvr03Rbqr9JKn2RLuifdHOablRskWR1jygWzeAF0H+t5v90/L5TIDKRLEf1YM1Tb+1iEjGU9Z0u5pVlDSCgrJNkVabVUCvbgAvgvxvN/sPa5C+luIgLTqS5PraEMnVz5cK6NoNaEsAWjZw2+X/MGd/k9HWHPRbTFmmFhlJ92qxRVBw0AxKmUMV0MIN4O3cAN5J/p87d+50pVJ5xmb5P8zZ3ywnITh1XQi1lTfNQJVD6wAr2hntjZ/TXLv3c6ICmtyAZ2DH7dyAji4AY6xCRKdslf/Dnv2N9H8liuhX9azkgn7DDwqindHer6TkCsh8qgAzB53SdtwSHQnA9/0dKeUOWY60Z/+k9EdRi0/pZB8X9BsukqSL9ka711JyBfKmAgxgv7DjngjA+P/1eh2zf1v2yDKSrJ727J+U/sk16hykkmYew2p72UYF5CA7sKLtuGUcgLfz/8+ePYsSQ98gotM2+v/J2QD7ztOc/dtJ/yJt6R0XjPoahivQrAIwbgyYvXEAxPG+AXtuFQdo6wKUSiV8UDGHbQRoZgmUoca20t/RG34GrbZr/NBpPfhMNR8n/cfrCqAf0B/TAyZdSW38DdVIatxg/GAcWaruTLHrU9qeD6EtAezt7aHQ4D7ZXIEW9yGkqjJjNuKkweTIVUehSRP1t3Rw5MYVQD+gP8xei0HAEhuSMG4wfjCO0i5fPkrAjmHPrd5re1+Tk5P7jDHblM9ta8e4OXRiNYVONLP/Mb1/4DNbCEBJJ/0z4ArUdH+gX46lkHrN9eSBcYPxg//bnNMBO4Y9t3qPdwoASimt8vuTMwN2eUG+Yasn/Dn8P42ZGrPM9Vioh8vxHz8MMZs+iVIcP/N6/CymOH7GAdhxu0AgPyIA+A4bA4DN8n9QBm83+x93G33GCtMvx1NWAaxJQdrqBiQCge9oFwjkeQsAtpL/5v/9wsQO8IwMNDP7O2QHBypAiNv6q19wPY5y4AZ0DATyPAUAhyH/TcQZwSYEmv6lTj5xs38WVQCp/kE/ob/6XRaU+XQDWgYCed4CgGnLf8AoiAneONqqTtLGmaAAQUGp+gf9ZPqdCu4GHBUI5HkKAJpO81KW/2YwYXBNcpbr03tshel39A/6yfR7mm6AZ68b0DYQyPMSADRJHEjaQGelLf/hXyL3fH1AeemQPpL9tK776foQ3IBZ3kgKsuno9qMCgYcmR9/3fVsDgAe13lijJLe5gTTkfyXFmcUhfTQrtUpKboDU18V4wriytN8PAoHavg9wiACiKIpsDABSwtBvCUk7YvCusln+WzpQM+cGGGA8YVyRxcoPdg377kgAOGtct6OV/j9Lia3NmfbIL8dgsk3+52Er66BuAPoN/RelUC+gpFVlcpxZCE/b9wFsDWq29f/RSWn6ayq6LEnlmxtFkOXZ1cjW3QJWJUr2D/oL/cZSjiudtDAO0AmHCCAIAs/WcZP019Lw/w2mOaNjvHGlLHd6cnYyS6BZ/r7DgLlf9Bf6bVCwNuPKUjBt3+0JgHOOHIA0NlaNHKaz9vTsNwhkwqDSmE1sVkG2IanaDCGmMR72LFdVsGvYd0sCaMoBSKtu5lgwaACjlf+flj9pqwqyAcPuN4/sBuy6OReA5yEHIIk0mcsoAJuW/5pjAEVD88pN2gE7n+xDu1wAcBrPSw7AMIJfqhS1PqjStrLIRVsFSML0P/rNnDg8KJj9wdVWuQCM5yEHYFjBr7QH0SiR9m5FLLHZhGbyTuN6XI8vm5cCm3IBJLc9B2AYwa/mAKBNnW2+O9bD0/rOzEIV1Kr/+h0Lfr6WAm/LBchFHkCawa9WgaQblgQAKTHQN1PatWh22eF6NkjfZP/dSCkQyPK1FHgbckMAaS4BmuuZQJItCUAY4KiGA2P9dOLQjH6q45h99ubwE1wP1z1mAREm+yvNQKDMwVJgbgnAwBuSlM6y8Rskv+PGAGcVtjqLD9dr9XeyimH1n0f5Qu4IIG3YVPoreW5BqM8twFHaC/q04m5IwBgLPo/fw+/jOmEKdffHAZv6bxxwBHAEbBrszYdmwHgf3dymHykS4Mqow8Tnmh8A3g9J0qLP6VIU0WM3tmktjqjEiQTDmnJ2Ht22h0O+8hocjoDUDxg9jP+RzW16em6Gln1f+bD7UhJ2thojwjOcBC4ZTeDBOL1cjejRGw3ymOcehXG2fF9VsIMR+Z52V2zYo51BOALIIUwAsyHjGyTw2OY2fVkvYZWhEHjjpCSfE9XrjGTEKAxiqk3GtB5L+tc7b9FWOaLzE1wpAqn3QmTF/8exfTtVoq3dxj1MVzTxZeULWgJHADmFMVb47ic4p3UR04MbW4oQvjjbKJeGtez9HaL5szFN379P0R112j8ekieI/gM1TsnFURvK+LMy9WsjRw7rjR1Gz/+Y0X/7Aaf/9SKnckCEvW6xI4Gu4Qggx0hmrFWocdT1pSimj924qYyoHhL9q38m6Bd+OqS3KoJYxGhSNKLmjXz6bFvSiSlJ95yV9Et/X9Cf/g2nf/dtn27tE5VLlpRtygAcAeQcyeDecS37sZ6/Vyf6jQ/F9PDPxPTWDiPa4+rDCPThQzbsB49ion0cEEhEv/STgs6eDOmzTwS0U2vEBjLOX5mAWwUo2B55JIHKfU6//kFBn/lZQVvbunYaT7BFBiL83T7gCuCxfpPowt2SfuvhiGLbNi6MEY4AjkCeJhFEzfdrRO+5U9BHfzam9VuNYFpmQvsDIPCJNm8R/fT9gn7xJwXd2meEgkB56r9hwBFAgbbVYsashkS/8H5BxyYaS2dZCu4NChh8PSL6xb8bUxA0jD/I0f0NA7kjgLTUXw72fx8CDH6qQvTeu4QKAObhnpIAmdVCortPS1qak+rntHP3Y8oXeB6LQLj9362NIxKInBPdMScpjPM1+wO4n1gQzUw27hG73k966deHYDlyDXNDAG7/d3fA8l/ek2UwqLdjoYz/SyeLXR+iJwJgjEnbVI7b/+3Qakw0FjZY4etDtECs7VzhUE1AxtgEWYZh7//OSaC8MDAzNi9wfYh2gH13rAlIRNdsLHk2jP3fzYPIqgYpMIyxpkne0sL6EG2a5dqhmoCrq6uQ/fzKlStvVqvVjxDRm5xzLqW0yh0A0sxgSxaCNKWmHQlkH2qnoOq39HMBIrIPsGPYM+wa9g0710M7PlAAKysriiFKpdI1W08GMhiUtVoVgizqKTu2AQO6LiW9w/Pov6bcbzHZDdg17Bt2ru398CqAEGLC1pOB0lwKzNHZ8IUD+qnEGJ1k6Z2OxHKwBAi7hn0nXztk6GEYxp7nWXmPyaWaKc9LrbPycDZ8UWCMfVcKNfM3Ng0MeD3Z2CS1FQu1lwJuhblsFsZDD8u6EvadfMHKmb6bpcBn5k+omRtbYIMBiKAxmzRUwG4cuziABUCfHSdOZclIRbHiwWosHsO4CgU9fn2b1iOhTh3ez5DxYzNUv5WRDhGAjbkAwCjOhn9k8yZtxI1Ku1kvjd0TVMFQib5XD5uhjJYR/ZuFKZrYZ7RTiikAEQxwPYZt0kJSPCFoRmJbdaPQShZaCmpEVUbaaRAB9nh0qIx0Ww5ASwIwuQDSwnSxYZwNbw4FBQnsYRDkKX2y4RcS9zgFgU+ex4ml0G5ZQPDgPsXx/sDLgIGeDWeJ6I8kz9QqgJn9sQvyb1+T9Kd/TfTf/6+kSqmxO7JZDTTlALQmAKwR+r6PSOG8jZOc2feeVhzALP9VRUMJ7OTMDShVAgpKvpr5VbaDfbzfEmEJiiad4J95nh7giLFhQBVzlUQnjxHdv8TooX9M9Id/RfT5b0ja3iOaKB+QQKscgIM3klCT29mzZ+8rl8t/RkRnhBCQDdach+DpHXxnPY++NndC1b7bHXAZCDMAZP/lOLbWDVCbgeLGRpnf+7U6zUxK4kGJSmVfqYBcIuXbkpRNJCX/wgzRX/0/ok/+J6FcA4/LmDEOs3i9Vqv98ytXrjyvf01Rw21qtikXwNo4QKxTNitIBBmwPFze3AAzawTlgII8G3+7ww8GeLCMPniiMtK1LaK/9x6if/8Jpgj/oCkYi5tzAKjdON7b20MMwMqRAWMF3U3yxuGexnjTcAP2tRtQov6DStnw+RmVSj5JvbTpkB/A97++TfRP3svoQ/+I0Vt7DWKAPcOumz/fkgAmJyeljZuCzKk4kOfrcWM58LqW63Gfct2klcKNQEltZJeVGdFbAy4vjhM+amfb4rs49F0Z6cF/yKiMYKBKh2AV2PWhz7a6QL1ej23eFGRm7DTdAJNgMs+5iivYXCrM86wJ6Tj0W/qtTnT+DqI7F4nVQhKc0Ya26/YEkJdNQWm7Aaq2HJFKKsJhGb89CxXArFQBaq0f5cFt+tIOfVVGOjFF4q7THq+F9Ga5Uv2w2QSk7by1ArA9EDgMNyAJrCZAARgV4OzIIctoFH5l8TQ7HACkTsFsmwOBrdwAb0A3oJ0KwEGbOIjGyoZyKARgx9XwcACwIwHYGghs5wbUkOqakqFCBSAgqPYHyMayoFWBEofigCEoyCqcHQ4AdiQAmwOBxg2Y1m7Ar25uU002NnUMkrxjVAD2B2CD0BNzM/Qu31eZh+4kKoesQUi1CQI6fj0IDgcAWxJAi0DgVRsDgUm6w1l4iAOkkcdtlgVh9Od9n35nbkaRgXMFHLIE7F/ijLPAF2/c2BAf+d8/OBwAbKsAkoFApMGThUhu5axJSZ/Z2qaqlOr/4YCSxigMyP85ztXDuQIOWQRnVAtDuuZ5hwOA6v1OvxxF0TRjDHsgrAYMHgogTRWAwB8IBUlB2CrsXAGHLEE2Ql4UCzZFFLW14Y4EgOChjgNYWRTXqIDjQ1ABnVwBtzzokBUEHt1AFnu76HdLAjBxgMuXL1+tVqsfJqLLNsYBhqkCml0BZAiaVQFuee04B/uB3d1I+nrk59jniH589Xufe8Bv9v87KgATB+CcbzLGrM18HbYKMK4AZv8vz83Q3b5P63Gs/m/n4RG6RVQKiHtQptugqc+Sr+j9avfcKbbw4Zfe3Gk51I+sCej7Pox/k4hO2+gGtFMBFRRRSwFJV2DZ9+lpVTpsm34URWrnoE0NJk31CHxvt18g+5CSRNyY1BuVnA5POZvbao5qi6PGp7qiLhDyJ0R0p20FQprX8OGjn/E9enZ+VuUJDFo0NFkzAHXikCD0WhTR45vbdC0WKkiYhcIhpiAITgf+g89x9Yz/q0pAMibGOPmVSSpNTJFXqjQIwD75UixIQVFYo2h/j8LqLokoUuSt3pIkpic4X78pPrD00Cvflc+Sxx46XOuzowKAG7C6unrgBliaGdxRBaR5lDhk/0YcKyWAJKEHN7YU4Uym4G4MC1JEFExM08SJefJK5cZr5ghhywuE5h7MoxKqOk0eU8ZfvXWDarduUiMC1V3fdVXYJuEGWLka0CkWgLz+ego3ZRoGAcDm/AC8lrWVgYZtS6rMzNP0whnygrJyAaSIEyVlx+3jugd1agOcWan7DIptcvYUTc29Q6uARh96/PYqwD0RgFkNWFtbu1ytVn8lD6sBpIkAdf1U4VDW2CgkU3QzmoOC1+JYHVRp5FYWiAC+Y+X4SZqcXSAphXo0YCW/FxxMk0FE5akZmpw7fVDqrRxgY/AACkCvBkjbVwOaswPhr2Or8CtRpIw1rQ09yaAgjP9JnSSEnYNmQ9JYVwfg8wuhZH9lZo5EnKVC1w6DgZEQ4dt9K2LyvaB/BZA3NyC5dg+jfzmKFAlgo1AlRT/deGBQGKe4R99emFWPRe7RTRifLlc9HhKQSiJOzKLqu0P+AIKHupslv1ShKOqcyX8kAeTRDTCzNOT/dfG2KyAgo1KKB3D9wKyP2R8q4Km5GbrL95X7AQIah5zC7I9ovxdUDpb9HHKYB8w4BVPHkc5PAyuAJjeg47qiNYeHENGEdgU+ublNa1FEi9gxkWI8gDTRYCUA25Lf6fv0lbkZ9YwlQsQFzHrqaNRA44jjoDI10r/qMGKopV1BrDJBvl/RL660/GhP5e21G7AhpYRathpJV+DVKKLHNrfVc5rxAIPgYIlQKAXwVFNcQC0hjsQchYoW++WKWkO22JNzOAoIAvoBTc+f6vixrggAbsDKyooHNyCO44cZYzc5557NbgBpg4MZYOaH8X9ic1sF79KMB5i/g2vB90d1IsQCEBP41sIsneaeqldgTi8ynx8GGkv7KApqXR6XQz9ActdU5828vR5wI/f3999kjL2RFxWgSEBKFQOAIW6mHA/oFBd4t04YencbNeAEusOw0TUBGBVw5syZm1EUPZIXFWCWBpvjAQuep9RA2iQAYP6F/4/gIxTAt9qoAbgNjggchomej7i7ePFiWK1W32CMQQnkYpJKxgNg/I/qzTzI60+bBAxKbdQAYgMgo6ok2haNfQpwHYBcNLaDvQSglwSVCqhWqw9LKS/nQQUAZqaF0cP4P7a5TZeGSALt1ABiA7+/MEtnPK42K+1LorfE24pgtKsGDnlHzwpgZWVFqQDP8zbysCTYvKMPxg6jh/F/dMgk0KwGqtSIRcD4n12YVQ9DBEjnuCmkcg+8FmTgXAWHftD3Kdee55XysiTYHBQcNQmY2RyzPGZ7yP/pBBGsqvgAVxuZFvQGo2YyUK5C0/UcKTikTgB5XRIcNwkYGGM2RABFcKfn0VfnT9BfnJqjr8yfoLOed0AGOKMAsQLUNdhJEALIpJkUHCE49FwR6Kglwenp6TeEECcGURO2kMDX5mZoKZHKO4x8fnM9XB+4JbCdmJSxo4GnNRkgUIicAuxlQPzgGGfq+6rDUOXbR6PhMlATxl2wejeXQzYIIKECbm5ubj7ied53GWMLtlYLyhoJNBMBfobcV4adIIMpz6Nn5k+o7zjNmSICQwgwekgy/C7+jySgCNWPdH6Dg8OgCkAFA0+fPv1GHlVAFkigebXAb0EGybqDk5oQMPPjgUpEhhS2pKAKcZq2rE6hQ0YJoAgqICsk0IkM4Per9xKEYOoNsCZSgCTwpplWB/rkCIdCY+AZO5EYlIv04F5IIJksNOobN2RgAn1mWRCE8JZsBAURHESOAUgB33MeJxp7DQXg3ACHgQkgmR4chuGjnPMthvRAKaMikADKf6MC8KLHVVDOLIOMcmZtju4HnUhBrxY4OBik4rNDBdRqtdeJaN3zPLPnhfJOAj/S24hRWQiFRssoyTTm89SbS0c2k8JAQR+H3GFgQ02mBwshfkVK+UPGWJyXvIB2JICNQyc4p3URq/LfeFwTsToeDO9lyRdyOQAO7ZDWTB1fvHgxXltb+yFIIG/JQe3ShmFYmPUx+7+sDwNZG7NL4ODQC1KT6g888ICS/ru7u+uMsdfzGhCkJqOO9XLbKY8r43+8hUtgzh1wROCQWwJ47rnnItQOPHv27FYYho/lOSDYDDAdZD+i7XAD4A58aGOLrmqXAOm8kY4dOCJwyBJSD9YVJSB4lEvwUhSp4iJQAygKijMCj/NGqTFHBA5ZQarG2SEgmPv600beY6bHjI9jwa5qNfDQxha9Hgu1HFdxROCQIQxjdk4GBD+sA4JUBFcgWXIcjFchphJxYPwgAUcEDlnDUOS5CQju7e1dZYxdxUEiRXAFmtWAOoaMM5pgjWScbogg+fsODsPGUIwSAUE8a1fgw0VyBQ4VHNU5ATNdEkGsicAtITqMAsOclUUbVyCXuQHtYKL+9S6JoKw/gziCIwOHYWOosrzJFbimXYG0Tt/KHRGsbGzRm0KovP0NfT5BJzJwS4oOg2KoqeHaFeBwBba2tpAh+KznefcIoU6lLKSra27a+PswcOzPwSad3TimR67fPNjBhzLhSDfGMqIqAsIa7GnqATD2die2a8zCMa1DTxjF3hC4Anj+4dLS0oNBEDxLRO+R6gRTVpjA4FFEAP8fRo2ZH7M8yOBjHcjAGH+yQIh5LYlO5ODgMKrNYfLChQvBxYsXX1xeXoYS+D5jbC5vxUMGJQL8DLmvZvoOZPCluRmVYbgjpNryC2LwdIGQ5HVbqQVHBg5jIYDl5WUoAcQDrk1PT1/T1YPgDkMFFH5cJvcWREeQwUeu31SGj/39JxOE0HzAKBr2gBxwQd44HNTBwWBk28N1lqCLB6RABqj8a7b47sUxPXz95kEVYNOpCC7eRg44XUgQ8ZjRpCYHFx9wGHV9CBcPSIEMUNNPvacJAQeKNp9V0EwOUABRJGn2uEd/JGfoJHEKXV3AwmMcQTgVD7h06dKLidoBhcsPGDTD0GQOotGOMaYOCjmWeJjlQ5DDuj72/Lp+djO/w1gJAPEAnR9wrej5Af2gOQcgbPHoRA4uCuBgMJZlOB0PoMSuwRc9zwv0hiFHAgMQQjfk4OBgMM51+INU4TAMHyQiRwJDQDticHAAxp2II++9994S4gGOBBwcCkgAL7zwQmiCgo4EHByKRQCAvHjxYuRIwMGhmAQAOBJwcCgwAQCOBBwcCkwAgCMBB4cCEwDgSMDBocAEADgScHAoMAEAjgQcHApMAIAjAQeHAhMA4EjAwaHABAA4EnBwKDABHEUCoasn4OCQbwLoRAIlzrlXtJOHHByKRgCHSKBWq60Q0Q845xu6zDhqDbiaAg4OOSWAAxLAUeSXL19+nog+UK/XP8A5f14rAecSODjkmABIz/Kq0vArr7yycenSpR+EYQg14FwCB4cCEICBWFlZ8UxhEecSODgUiwBUjUEUFnEugYNDAQlAw7kEPTSUQ0HgM1kUAujaJShyzgAOE8FRYQ4FgDogsvPZm3kkgI4uged5XlFzBmD8tbqk3ao+Ysght2BETMQilnVxq3AE0M4lkFL+spSykGpASqJSwGjjZkx/+2qVZKlxHLlD/iAlSb/kMVEVVwNW+qF6cWVVFI0AbnMJoAZeffXVdmqgEESAM4GEkPSXf71LDCeNghUc8gdGMVU8dO732fv/eE/KFY+x1qGfIhCAOYmokxoohFsQC0lTE5y++392aGs9JL+EMxnH/a0c0gaTEkzPyGNPqRdW23+2EATQSQ3UarUPep73N0VwC2DslRKjH18N6T9+c5O8SU5R7BggT0AWrD9T8sKdaDV473f+Uj674rGHGkfxtUKRQ0HmQFI6f/78QhiGZ4Ig+Dpj7D4hBAkhVKNBHVDOAPV/a0/Qk79xhn7+gzO0tx5S4DMVJHSw2/iD40EQ7cev7e7K98/81E/dJPq8bCf/i6gAWqqBI9yCXCqCconRr3/hKj33P27R5ElfGT/UgAsMWgd0WSSFFMFMKRB18bKsxg+d+AffuYE3Oxm/en9kXzPDABGsripHKYYaqNfr58rl8hNEdC6O4wXGWO4UAQ5kr4eSokjSrz08T5/95ZNUmvaIaoLiuqTY6miIVLOeGfxS5nWcMxaUOKOKhwAPiVD83s616LMz//R7m1L+Jmfs80f2Yk4bJh23oBMR5IEM1EIAEd28FdP73jNB/+LnjtPPvG+S3nmmRKUJ3mgJW0aIVGYuCf+io/LuzzCc9S4pEvLH3GPf55I9w/7On30Xb3Vr/OYyDm3UQCsiEEIsmM/mRRV4HqPdfUHVmqCZYx6dP1eihVmfZCyzb0dw0YgxzjnHdwUP+B7bmCizNz7288d+6967prbwMc+LpV/iwvc6p8ZagZjIL/sUhmJnQ/jPn3n/H+/hZfmbxOnfvq18ukHWuzdTRBCG4dlSqfS7RLQQx7HPGDudFyKAGuCcqThAtd5wDbI8OkxcBnEa9X8hrzLOIylpY/3Ntz5OVL1CtLNBBYCUKx6W+jpF+9shw12cTSJYWlo6HUWRL6VcmJqaAhmczZt7ADLIzszPmowekxtTho/Znnt8gxG7wuLax4+dDDYmZCn6nxdfuIrf+ovvPeC/9NIO+9TsstURjZbADhcMy5VV0cuM34zMdHPWoVcMTFIRdese2E4G40ZyBcbM9vpnzO6Xa7XaJ0ul0mWs5HTqK4fWcATQO7yVlRUMrq7cA8CRQTpGL6W86nkeSsFt1Ov1jwdBcCVh+If6xeFoOAIYjnswPzk5+RRjbN6RQTpGL6W8vre39xhj7Lrv+9GlS5euNhm+M/o+4AggBbSSnL2SQdFchebkqh6N3sn8lOAIIF20lKHdkEErQsgLKbTKpEwafLdG72R++nAEMEYymJqaelJKeQo53EQ0QUSLzRexjRS6MXaNdSLaZ4wFjLFru7u7jzujHz0cAYyRDJaXlxeFEBNxHIec81MIIkop8ZrgHFt1ZblbUhgVQRy1L6KdsTPGathk1UjYYesI4gkhruFoN875/traGgjBwAX0RgRHAKNH28ENQqhWqzB6GIrwPG+xW1LohSAGQRsDP9LY4zhexy3gA5VKpdZk8IAz+jHAEUAGgocGrSLZnUhBz8YHOzoZY7IbghgQysAlik68DQHV0YOxd3XvDsOHI4BsQc2C3ZICDN68Vi6Xeb1ejzsRxAA4ZOClUsmr1WoHGXYghB6MHU/O4DMARwA5IYVmgmCMlatVlP9NB5VKBfKipYEn4YzdLjgCsBDNRtaMYcrpcf5tBweHLmAqHaX9OMr4Hcg6/H8TzfwKCX36FAAAAABJRU5ErkJggg=='     # icono de la carpeta: el de la app con una carpeta amarilla abajo a la derecha
+$Pasos = @('Comprobar el equipo (espacio, internet, permisos)', 'Copiar el programa (guardando la versión anterior)', "Buscar Python $($App.PyMin)+ (o instalarlo en la carpeta)",
+           'Instalar las librerías necesarias', 'Comprobar que todo carga', 'Crear los accesos directos y el icono de la carpeta', 'Registrar el desinstalador')
+
+# ---- desinstalador: se escribe en %LOCALAPPDATA% al instalar (con @DIR@ etc. ya sustituidos), asi no ensucia la carpeta del programa
+$PlantillaDes = @'
+param([switch]$Silencioso, [switch]$ConDatos)
+Add-Type -AssemblyName System.Windows.Forms
+$Dir = '@DIR@'; $Nombre = '@NOMBRE@'; $Acceso = '@ACCESO@'; $Programa = @(@PROGRAMA@); $Reg = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\@NOMBRE@'
+$git = Test-Path -LiteralPath (Join-Path $Dir '.git')
+if (-not $Silencioso) {
+    $t = "Se van a quitar los accesos directos de $Nombre y su entrada en Aplicaciones de Windows."
+    if ($git) { $t += "`n`nEsta carpeta es de desarrollo (tiene git): sus ficheros no se borran." } else { $t += "`n`nTambién se borrará el programa de:`n$Dir`n`nTus datos se conservan salvo que lo pidas en la siguiente pregunta." }
+    if ([Windows.Forms.MessageBox]::Show($t + "`n`n¿Desinstalar?", "Desinstalar $Nombre", 'YesNo', 'Question') -ne 'Yes') { return }
+    if (-not $git -and [Windows.Forms.MessageBox]::Show("¿Borrar también tus datos (descargas, ajustes...)?`nSi dices que no, se quedan en la carpeta.", "Desinstalar $Nombre", 'YesNo', 'Warning') -eq 'Yes') { $ConDatos = $true }
 }
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine -like "*$Dir*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+$w = New-Object -ComObject WScript.Shell
+foreach ($c in 'Desktop', 'Programs', 'Startup') { $f = Join-Path $w.SpecialFolders($c) "$Acceso.lnk"; if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force } }
+Remove-Item -Path $Reg -Recurse -Force -ErrorAction SilentlyContinue
+if (-not $git -and (Test-Path -LiteralPath $Dir)) {
+    if ($ConDatos) { Remove-Item -LiteralPath $Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    else {
+        foreach ($p in $Programa + 'python') { $r = Join-Path $Dir $p; if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue } }
+        foreach ($n in 'carpeta.ico', 'desktop.ini') { $r = Join-Path $Dir $n; if (Test-Path -LiteralPath $r) { & attrib -s -h -r $r | Out-Null; Remove-Item -LiteralPath $r -Force -ErrorAction SilentlyContinue } }
+        & attrib -r $Dir | Out-Null
+        if (-not (Get-ChildItem -LiteralPath $Dir -Force)) { Remove-Item -LiteralPath $Dir -Force -ErrorAction SilentlyContinue }
+    }
+}
+if (-not $Silencioso) { [void][Windows.Forms.MessageBox]::Show("$Nombre se ha desinstalado.", "Desinstalar $Nombre", 'OK', 'Information') }
+$mia = Join-Path $env:LOCALAPPDATA ('Kuerb0' + [char]92 + $Nombre)      # este desinstalador y el registro: se borran al terminar (cuando este script ya no los use)
+Start-Process cmd -WindowStyle Hidden -ArgumentList ('/c timeout /t 3 /nobreak >nul & rmdir /s /q "' + $mia + '"')
+'@
+
+# ---- el trabajo de instalar corre en otro hilo (runspace) y avisa a la ventana por una cola
+$Trabajo = {
+    param($Q, $O, $App, $Self, $PlantillaDes, $Acceso, $CarpetaIco, $Pasos)
+    $ErrorActionPreference = 'Continue'
+    $ProgressPreference = 'SilentlyContinue'
+    try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
+    $env:PYTHONIOENCODING = 'utf-8'
+    $R = @{ rc = 0 }
+    function Msg($t, $a, $b) { $Q.Enqueue([pscustomobject]@{ T = $t; A = $a; B = $b }) }
+    function Log($s) { Msg 'log' $s; try { Add-Content -LiteralPath $O.Log -Value ('{0:HH:mm:ss}  {1}' -f (Get-Date), $s) -Encoding UTF8 } catch { } }
+    function Paso($i, $e) { Msg 'paso' $i $e; if ($e -ne 'curso') { try { Add-Content -LiteralPath $O.Log -Value ('{0:HH:mm:ss}  [{1}] {2}' -f (Get-Date), $e, $Pasos[$i]) -Encoding UTF8 } catch { } } }
+    function Prog($p) { Msg 'prog' $p }
+    function Cancelado { if ($O.Cancelar) { throw 'Instalación cancelada.' } }
+    # ejecuta un programa enseñando su salida linea a linea; se puede cancelar
+    function Ejecutar($exe, [string[]]$a) {
+        $i = New-Object Diagnostics.ProcessStartInfo
+        $i.FileName = $exe
+        $i.Arguments = (($a | ForEach-Object { if ($_ -match '[\s"]') { '"' + $_.Replace('"', '\"') + '"' } else { $_ } }) -join ' ')
+        $i.UseShellExecute = $false; $i.CreateNoWindow = $true; $i.RedirectStandardOutput = $true; $i.RedirectStandardError = $true
+        $i.StandardOutputEncoding = [Text.Encoding]::UTF8; $i.StandardErrorEncoding = [Text.Encoding]::UTF8
+        $p = [Diagnostics.Process]::Start($i)
+        $err = $p.StandardError.ReadToEndAsync()
+        while ($null -ne ($s = $p.StandardOutput.ReadLine())) {
+            if ($s.Trim()) { Log $s.TrimEnd() }
+            if ($O.Cancelar) { & taskkill /PID $p.Id /T /F 2>&1 | Out-Null; throw 'Instalación cancelada.' }
+        }
+        $p.WaitForExit()
+        foreach ($l in ($err.Result -split "`r?`n")) { if ($l.Trim()) { Log $l.TrimEnd() } }
+        $R.rc = $p.ExitCode
+    }
+    $codProbar = 'import sys; ' + $(if ($App.PyImport) { 'import ' + $App.PyImport + '; ' } else { '' }) + 'sys.exit(0 if sys.version_info >= (' + ($App.PyMin -replace '\.', ', ') + ') else 1)'
+    function Probar($e) { if (-not $e -or -not (Test-Path -LiteralPath $e)) { return $false }; try { & $e -c $codProbar 2>$null | Out-Null; return ($LASTEXITCODE -eq 0) } catch { return $false } }
+    function Version-De($dir) {
+        $vf = Join-Path $dir $App.VersionFile
+        if (-not (Test-Path -LiteralPath $vf)) { return $null }
+        $t = Get-Content -LiteralPath $vf -Raw -Encoding UTF8
+        if ($App.VersionRe) { if ($t -match $App.VersionRe) { return $Matches[1] } else { return $null } }
+        return $t.Trim()
+    }
+    $dest = $O.Dest
+    $paso = 0
+    try {
+        # 0. comprobar el equipo
+        Paso 0 'curso'; Prog 2
+        Log "Instalador de $($App.Nombre) $($App.Version) · $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+        Log "Windows $([Environment]::OSVersion.Version) · PowerShell $($PSVersionTable.PSVersion)"
+        $aviso = $false
+        New-Item -ItemType Directory -Path $dest -Force | Out-Null
+        $prueba = Join-Path $dest '.prueba_escritura'
+        try { Set-Content -LiteralPath $prueba -Value 'x' -ErrorAction Stop; Remove-Item -LiteralPath $prueba -Force } catch { throw "No puedo escribir en la carpeta $dest. Elige otra." }
+        Log "Escritura en la carpeta: ok"
+        $libre = $null; try { $libre = (Get-Item -LiteralPath $dest).PSDrive.Free } catch { }
+        if ($null -ne $libre) {
+            Log ('Espacio libre en el disco: {0:N1} GB' -f ($libre / 1GB))
+            if ($libre -lt 300MB) { throw 'Casi no queda espacio en el disco (menos de 300 MB).' }
+            if ($libre -lt 1.5GB -and -not $O.SinRed) { Log 'AVISO: poco espacio; se recomiendan 1,5 GB libres para Python y las librerías.'; $aviso = $true }
+        }
+        if (-not $O.SinRed) {
+            try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
+            try { $rq = [Net.WebRequest]::Create('https://pypi.org/simple/'); $rq.Method = 'HEAD'; $rq.Timeout = 8000; $rs = $rq.GetResponse(); $rs.Close(); Log 'Internet: ok (pypi.org responde)' }
+            catch { Log 'AVISO: no hay conexión con pypi.org. Si faltan Python o librerías, la instalación fallará.'; $aviso = $true }
+        }
+        if ($env:OneDrive -and $dest.StartsWith($env:OneDrive, [StringComparison]::OrdinalIgnoreCase)) { Log 'La carpeta está dentro de OneDrive: se sincronizará.' }
+        if (Test-Path -LiteralPath (Join-Path $dest '.git')) { Log 'La carpeta tiene git (desarrollo): los ficheros del programa se sobrescriben con los del instalador.' }
+        Paso 0 $(if ($aviso) { 'aviso' } else { 'ok' }); Prog 8; Cancelado
+
+        # 1. extraer (si ya hay una version, guarda copia en anteriores/)
+        $paso = 1; Paso 1 'curso'
+        $antes = Version-De $dest
+        if ($antes) {
+            $copia = Join-Path $dest ('anteriores\{0}_{1:yyyyMMdd-HHmmss}' -f $antes, (Get-Date))
+            foreach ($c in $App.Programa) { $o = Join-Path $dest $c; if (Test-Path -LiteralPath $o) { Copy-Item -LiteralPath $o -Destination (Join-Path $copia $c) -Recurse -Force } }
+            Log "Versión anterior ($antes) guardada en $copia"
+        }
+        $enc = New-Object Text.UTF8Encoding($false)
+        $lineas = [IO.File]::ReadAllLines($Self, $enc)
+        $i = 0; $n = 0
+        while ($i -lt $lineas.Length) {
+            $l = $lineas[$i]
+            if ($l.StartsWith(':::BEGIN ')) {
+                $p = $l.Substring(9).Trim().Split('|'); $rel = $p[0]; $modo = $p[1]
+                $j = $i + 1; $buf = New-Object System.Collections.Generic.List[string]
+                while ($j -lt $lineas.Length -and -not $lineas[$j].StartsWith(':::END')) { $buf.Add($lineas[$j]); $j++ }
+                $d = Join-Path $dest $rel
+                $c = Split-Path -Parent $d
+                if (-not (Test-Path -LiteralPath $c)) { New-Item -ItemType Directory -Path $c -Force | Out-Null }
+                if ($modo -eq 'b64') { [IO.File]::WriteAllBytes($d, [Convert]::FromBase64String(($buf -join ''))) }
+                else { [IO.File]::WriteAllText($d, (($buf -join "`r`n") + "`r`n"), $enc) }
+                if ($p.Length -gt 2 -and $p[2]) {
+                    $h = (Get-FileHash -LiteralPath $d -Algorithm SHA256).Hash.ToLower()
+                    if ($h -ne $p[2]) { throw "El fichero $rel no coincide con el original (¿descarga incompleta o dañada?). Descarga el instalador otra vez." }
+                }
+                $n++; Log "  $rel"
+                $i = $j
+            }
+            $i++
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $dest $App.Comprueba))) { throw "No se ha podido extraer $($App.Comprueba)." }
+        foreach ($c in $App.Carpetas) { New-Item -ItemType Directory -Path (Join-Path $dest $c) -Force | Out-Null }
+        Log "$n ficheros en $dest (verificados con SHA-256)"; Paso 1 'ok'; Prog 18; Cancelado
+
+        # 2. python
+        $paso = 2; Paso 2 'curso'
+        $py = $null
+        $cand = @(Join-Path $dest 'python\python.exe')
+        if (Get-Command py -ErrorAction SilentlyContinue) { $cand += ("$(& py -3 -c 'import sys; print(sys.executable)' 2>$null)").Trim() }
+        if (Get-Command python -ErrorAction SilentlyContinue) { $cand += ("$(& python -c 'import sys; print(sys.executable)' 2>$null)").Trim() }
+        foreach ($e in $cand) { if (-not $py -and (Probar $e)) { $py = $e } }
+        if (-not $py) {
+            if ($O.SinRed) { throw "No hay un Python $($App.PyMin) o superior (y está activado -SinRed)." }
+            Log 'No hay un Python válido: se descarga e instala DENTRO de la carpeta (subcarpeta python).'
+            Log '(puede tardar 1-2 minutos; hace falta internet)'
+            $inst = Join-Path $env:TEMP 'python-instalador.exe'
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dest 'herramientas\descargar_python.ps1') $inst 2>&1 | ForEach-Object { Log "$_" }
+            if (-not (Test-Path -LiteralPath $inst)) { throw 'No se ha podido descargar Python. Revisa la conexión a internet y vuelve a intentarlo.' }
+            Cancelado
+            Start-Process -FilePath $inst -ArgumentList @('/quiet', "TargetDir=$dest\python", 'InstallAllUsers=0', 'PrependPath=0', 'Include_pip=1', 'Include_tcltk=1', 'Include_test=0', 'Include_launcher=0') -Wait
+            $py = Join-Path $dest 'python\python.exe'
+            if (-not (Test-Path -LiteralPath $py)) { throw 'Ha fallado la instalación de Python en la carpeta. Borra la subcarpeta python y vuelve a intentarlo.' }
+        }
+        Log "Python: $py"; Paso 2 'ok'; Prog 35; Cancelado
+
+        # 3. librerias
+        $paso = 3; Paso 3 'curso'
+        if (-not $App.Reqs) { Log 'Este programa no necesita librerías.'; Paso 3 'ok' }
+        elseif ($O.SinRed) { Log 'Omitido (-SinRed).'; Paso 3 'aviso' }
+        else {
+            Ejecutar $py @('-m', 'pip', 'install', '--upgrade', 'pip', '--disable-pip-version-check', '-q')
+            Ejecutar $py @('-m', 'pip', 'install', '--disable-pip-version-check', '--no-warn-script-location', '-r', (Join-Path $dest $App.Reqs))
+            if ($R.rc -ne 0) { throw 'Alguna librería no se ha podido instalar (suele ser falta de conexión). Vuelve a ejecutar el instalador: lo ya instalado no se repite.' }
+            if ($App.PipPost) {      # pywin32 se registra con Windows con su propio script
+                $sd = ("$(& $py -c "import sysconfig; print(sysconfig.get_path('scripts'))" 2>$null)").Trim()
+                $sc = Join-Path $sd 'pywin32_postinstall.py'
+                if (Test-Path -LiteralPath $sc) { Log 'Registrando pywin32 con Windows...'; Ejecutar $py @($sc, '-install') }
+            }
+            Paso 3 'ok'
+        }
+        Prog 72; Cancelado
+
+        # 4. comprobar
+        $paso = 4; Paso 4 'curso'
+        if ($App.Imports) { Ejecutar $py @('-c', "import $($App.Imports)") } else { $R.rc = 0 }
+        if ($R.rc -ne 0) { Log 'Alguna librería no carga bien: el programa puede arrancar, pero conviene volver a ejecutar el instalador.'; Paso 4 'aviso' }
+        elseif ($App.PipExtra -and $App.ExtraImport) {
+            Ejecutar $py @('-c', "import $($App.ExtraImport)")
+            if ($R.rc -ne 0 -and -not $O.SinRed) { Log "Instalando $($App.PipExtra) (ventana propia; si falla se usará Edge)..."; Ejecutar $py @('-m', 'pip', 'install', '--disable-pip-version-check', '--no-warn-script-location', $App.PipExtra) }
+            Paso 4 'ok'
+        } else { Paso 4 'ok' }
+        Prog 82; Cancelado
+
+        # 5. accesos directos e icono de la carpeta
+        $paso = 5; Paso 5 'curso'
+        $pyw = $py -replace 'python\.exe$', 'pythonw.exe'
+        $lanza = Join-Path $dest $App.Lanzador
+        if ($O.SinAccesos) { Log 'Omitido (-SinAccesos).'; Paso 5 'aviso' }
+        else {
+            $w = New-Object -ComObject WScript.Shell
+            function Acceso($carpeta, $oculto) {
+                $s = $w.CreateShortcut((Join-Path $w.SpecialFolders($carpeta) "$Acceso.lnk"))
+                $s.TargetPath = $pyw; $s.Arguments = '"' + $lanza + '"'; $s.WorkingDirectory = (Split-Path -Parent $lanza)
+                $s.IconLocation = (Join-Path $dest $App.Icono); $s.Description = "$($App.Nombre) $($App.Version)"
+                if ($oculto) { $s.WindowStyle = 7 }
+                $s.Save(); Log "Acceso: $carpeta\$Acceso.lnk"
+            }
+            if ($O.Escritorio) { Acceso 'Desktop' $false }
+            if ($O.Inicio) { Acceso 'Programs' $false }
+            if ($O.Arranque) { Acceso 'Startup' $true }
+            # la carpeta con el icono de la app y una carpeta amarilla abajo a la derecha
+            $ci = Join-Path $dest 'carpeta.ico'; $di = Join-Path $dest 'desktop.ini'
+            foreach ($x in $ci, $di) { if (Test-Path -LiteralPath $x) { & attrib -s -h -r $x | Out-Null } }
+            [IO.File]::WriteAllBytes($ci, [Convert]::FromBase64String($CarpetaIco))
+            [IO.File]::WriteAllText($di, "[.ShellClassInfo]`r`nIconResource=carpeta.ico,0`r`n", [Text.Encoding]::ASCII)
+            & attrib +s +h $di | Out-Null; & attrib +h $ci | Out-Null; & attrib +r $dest | Out-Null
+            $ex = Join-Path $dest '.git\info\exclude'
+            if (Test-Path -LiteralPath (Split-Path -Parent $ex)) { foreach ($x in 'carpeta.ico', 'desktop.ini') { if (-not (Test-Path -LiteralPath $ex) -or -not (Select-String -LiteralPath $ex -SimpleMatch -Pattern $x -Quiet)) { Add-Content -LiteralPath $ex -Value $x } } }
+            Log 'Icono de la carpeta: carpeta.ico + desktop.ini'
+            Paso 5 'ok'
+        }
+        Prog 92; Cancelado
+
+        # 6. desinstalador (en %LOCALAPPDATA%) y entrada en Aplicaciones de Windows
+        $paso = 6; Paso 6 'curso'
+        if ($O.SinAccesos) { Paso 6 'aviso' }
+        else {
+            $dd = Join-Path $env:LOCALAPPDATA "Kuerb0\$($App.Nombre)\Desinstalar"
+            New-Item -ItemType Directory -Path $dd -Force | Out-Null
+            $prog = ($App.Programa | ForEach-Object { "'$_'" }) -join ', '
+            $txt = $PlantillaDes.Replace('@DIR@', $dest).Replace('@NOMBRE@', $App.Nombre).Replace('@ACCESO@', $Acceso).Replace('@PROGRAMA@', $prog)
+            [IO.File]::WriteAllText((Join-Path $dd 'desinstalar.ps1'), $txt, (New-Object Text.UTF8Encoding($true)))
+            [IO.File]::WriteAllText((Join-Path $dd 'Desinstalar.bat'), "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -STA -File `"%~dp0desinstalar.ps1`" %*`r`n", (New-Object Text.UTF8Encoding($false)))
+            $k = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$($App.Nombre)"
+            New-Item -Path $k -Force | Out-Null
+            $v = @{ DisplayName = "$($App.Nombre) $($App.Version)"; DisplayVersion = $App.Version; Publisher = 'Kuerb0'; InstallLocation = $dest
+                    DisplayIcon = (Join-Path $dest $App.Icono); UninstallString = '"' + (Join-Path $dd 'Desinstalar.bat') + '"' }
+            foreach ($nombre in $v.Keys) { Set-ItemProperty -Path $k -Name $nombre -Value $v[$nombre] }
+            Set-ItemProperty -Path $k -Name NoModify -Value 1 -Type DWord; Set-ItemProperty -Path $k -Name NoRepair -Value 1 -Type DWord
+            Log "Desinstalador: $dd"; Paso 6 'ok'
+        }
+        Prog 100
+        Msg 'fin' $true $pyw
+    } catch {
+        $m = $_.Exception.Message
+        Log "ERROR: $m"
+        Paso $paso $(if ($m -eq 'Instalación cancelada.') { 'aviso' } else { 'fallo' })
+        Msg 'fin' $false $m
+    }
+}
+
+# ---- opciones de partida
+function Version-De($dir) {      # la version ya instalada en esa carpeta (o $null)
+    $vf = Join-Path $dir $App.VersionFile
+    if (-not (Test-Path -LiteralPath $vf)) { return $null }
+    $t = Get-Content -LiteralPath $vf -Raw -Encoding UTF8
+    if ($App.VersionRe) { if ($t -match $App.VersionRe) { return $Matches[1] } else { return $null } }
+    return $t.Trim()
+}
+
+function Carpeta-Por-Defecto {
+    if ($Destino) { return $Destino }
+    if ((Split-Path -Leaf (Split-Path -Parent $Origen)) -eq 'instaladores') { return $DirPorDefecto }     # dentro de un repositorio: la carpeta del programa
+    try { $ya = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$($App.Nombre)" -ErrorAction Stop).InstallLocation; if ($ya -and (Test-Path -LiteralPath $ya)) { return $ya } } catch { }
+    return (Join-Path $env:LOCALAPPDATA "Programs\$($App.Nombre)")        # no la carpeta de Descargas desde donde se ejecuta el .bat
+}
+$dir0 = Carpeta-Por-Defecto
+$LogPath = Join-Path $env:LOCALAPPDATA "Kuerb0\$($App.Nombre)\instalacion.log"
+New-Item -ItemType Directory -Path (Split-Path -Parent $LogPath) -Force | Out-Null; Set-Content -LiteralPath $LogPath -Value '' -Encoding UTF8
+$Opc = @{ Dest = $dir0; Escritorio = $true; Inicio = $true; Arranque = $false; SinRed = [bool]$SinRed; SinAccesos = [bool]$SinAccesos; Log = $LogPath; Cancelar = $false }
+$Q = New-Object 'System.Collections.Concurrent.ConcurrentQueue[object]'
+
+function Lanzar-Trabajo {
+    $script:ps = [powershell]::Create()
+    [void]$script:ps.AddScript($Trabajo.ToString()).AddArgument($Q).AddArgument($Opc).AddArgument($App).AddArgument($Self).AddArgument($PlantillaDes).AddArgument($NombreAcceso).AddArgument($CarpetaIco).AddArgument($Pasos)
+    $script:h = $script:ps.BeginInvoke()
+}
+
+if ($Silencioso) {
+    Lanzar-Trabajo
+    $ok = $false
+    while (-not $h.IsCompleted -or -not $Q.IsEmpty) {
+        $m = $null
+        while ($Q.TryDequeue([ref]$m)) {
+            switch ($m.T) { 'log' { Write-Host "  $($m.A)" } 'paso' { if ($m.B -ne 'curso') { Write-Host ("[{0}] {1}" -f $m.B, $Pasos[$m.A]) } } 'fin' { $ok = $m.A } }
+        }
+        Start-Sleep -Milliseconds 150
+    }
+    if ($LimpiarTemp) { Remove-Item -LiteralPath (Split-Path -Parent $PSCommandPath) -Recurse -Force -ErrorAction SilentlyContinue }
+    exit $(if ($ok) { 0 } else { 1 })
+}
+
+# ---- ventana
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+[Windows.Forms.Application]::EnableVisualStyles()
+$cFondo = [Drawing.Color]::FromArgb(11, 15, 20); $cPanel = [Drawing.Color]::FromArgb(17, 23, 30); $cCian = [Drawing.Color]::FromArgb(46, 196, 182)
+$cOro = [Drawing.Color]::FromArgb(224, 165, 38); $cBlanco = [Drawing.Color]::FromArgb(242, 245, 247); $cGris = [Drawing.Color]::FromArgb(139, 152, 165)
+$cVerde = [Drawing.Color]::FromArgb(61, 220, 132); $cRojo = [Drawing.Color]::FromArgb(255, 92, 92)
+$fMono = { param($t, $s) New-Object Drawing.Font('Consolas', [single]$t, [Drawing.FontStyle]$s) }
+
+$f = New-Object Windows.Forms.Form
+$f.Text = "Instalador de $($App.Nombre) $($App.Version)"; $DW = 780; $DH = 570                                  # tamano de diseno: todo se dibuja a este tamano y se escala segun la ventana
+$pantalla = [Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+$s0 = [Math]::Min(2.0, [Math]::Min($pantalla.Width * 0.92 / $DW, $pantalla.Height * 0.92 / $DH))      # al abrir: lo mas grande que cabe (hasta el doble)
+$f.ClientSize = New-Object Drawing.Size([int]($DW * $s0), [int]($DH * $s0)); $f.StartPosition = 'CenterScreen'
+$f.FormBorderStyle = 'Sizable'; $f.MaximizeBox = $true; $f.MinimumSize = New-Object Drawing.Size(($DW + $f.Width - $f.ClientSize.Width), ($DH + $f.Height - $f.ClientSize.Height)); $f.BackColor = $cFondo; $f.ForeColor = $cGris; $f.Font = & $fMono 10 'Regular'
+$ico = Join-Path (Split-Path -Parent $Origen) $App.Icono
+if ($Origen -like '*.exe') { try { $f.Icon = [Drawing.Icon]::ExtractAssociatedIcon($Origen) } catch { } }      # el .exe lleva el icono de la app
+elseif (Test-Path -LiteralPath $ico) { try { $f.Icon = New-Object Drawing.Icon($ico) } catch { } }
+
+function Etiqueta($texto, $x, $y, $w, $h, $color, $fuente) {
+    $l = New-Object Windows.Forms.Label; $l.Text = $texto; $l.Location = New-Object Drawing.Point($x, $y); $l.Size = New-Object Drawing.Size($w, $h)
+    $l.ForeColor = $color; $l.BackColor = [Drawing.Color]::Transparent; if ($fuente) { $l.Font = $fuente }; return $l
+}
+function Boton($texto, $x) {
+    $b = New-Object Windows.Forms.Button; $b.Text = $texto; $b.Size = New-Object Drawing.Size(130, 34); $b.Location = New-Object Drawing.Point($x, 530)
+    $b.FlatStyle = 'Flat'; $b.FlatAppearance.BorderColor = $cCian; $b.BackColor = $cFondo; $b.ForeColor = $cCian; $b.Cursor = 'Hand'
+    $b.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(20, 44, 48); return $b
+}
+
+# cabecera: el cuervo a la izquierda; a la derecha el nombre en letras grandes, que es el instalador y la version
+function Imagen($b64, $x, $y) {
+    $i = [Drawing.Image]::FromStream((New-Object IO.MemoryStream(, [Convert]::FromBase64String($b64))))
+    $p = New-Object Windows.Forms.PictureBox; $p.Image = $i; $p.SizeMode = 'Zoom'; $p.Size = $i.Size; $p.Location = New-Object Drawing.Point($x, $y); $p.BackColor = $cFondo; $f.Controls.Add($p); return $i
+}
+$iCuervo = Imagen $CuervoPng 18 10
+$xd = 18 + $iCuervo.Width + 26
+$null = Imagen $NombrePng $xd 28
+$f.Controls.Add((Etiqueta 'INSTALADOR' $xd 142 200 30 $cBlanco (& $fMono 18 'Bold')))
+$f.Controls.Add((Etiqueta "V E R S I Ó N   $($App.Version)" ($xd + 200) 150 300 22 $cCian (& $fMono 11 'Regular')))
+$f.Controls.Add((Etiqueta "KUERB0  ·  Without data, you’re just another person with an opinion" $xd 178 (762 - $xd) 18 $cGris (& $fMono 8.5 'Italic')))
+$linea = New-Object Windows.Forms.Panel; $linea.Location = New-Object Drawing.Point(18, 202); $linea.Size = New-Object Drawing.Size(744, 2); $linea.BackColor = $cCian; $linea.Anchor = 'Top,Left,Right'; $f.Controls.Add($linea)
+
+function Pagina { $p = New-Object Windows.Forms.Panel; $p.Location = New-Object Drawing.Point(18, 214); $p.Size = New-Object Drawing.Size(744, 300); $p.BackColor = $cFondo; $p.Anchor = 'Top,Left,Right,Bottom'; $p.Visible = $false; $f.Controls.Add($p); return $p }
+$p1 = Pagina; $p2 = Pagina; $p3 = Pagina; $p4 = Pagina
+
+# pagina 1: bienvenida
+$p1.Controls.Add((Etiqueta "Bienvenido al instalador de $($App.Nombre). Esto va a:" 4 4 730 24 $cBlanco (& $fMono 11 'Bold')))
+$p1.Controls.Add((Etiqueta ("  [1] Comprobar tu equipo (espacio, internet, permisos)`r`n  [2] Copiar el programa en la carpeta que elijas`r`n        (si ya hay una versión, se guarda una copia)`r`n  [3] Buscar Python $($App.PyMin)+ o, si no hay, instalar uno EN ESA CARPETA`r`n        (no hace falta ser administrador)`r`n  [4] Instalar las librerías que necesita el programa`r`n  [5] Crear los accesos directos y el icono de la carpeta`r`n  [6] Dejar un desinstalador en «Aplicaciones» de Windows") 4 38 730 150 $cGris $null))
+$p1.Controls.Add((Etiqueta ("Tus datos ($($App.Datos)) no se tocan si ya existen.`r`nTodo se queda en la carpeta elegida. No se manda ni se guarda`r`nningún dato tuyo en ningún sitio ajeno.") 4 196 730 56 $cVerde $null))
+$lbNueva = Etiqueta '' 4 262 730 24 $cOro $null; $lbNueva.Cursor = 'Hand'; $p1.Controls.Add($lbNueva)
+$lbNueva.Add_Click({ Start-Process 'https://kuerb0.github.io/portal/' })
+
+# pagina 2: opciones
+$p2.Controls.Add((Etiqueta 'Carpeta de instalación' 4 4 730 24 $cBlanco (& $fMono 11 'Bold')))
+$tbDir = New-Object Windows.Forms.TextBox; $tbDir.Location = New-Object Drawing.Point(4, 38); $tbDir.Size = New-Object Drawing.Size(590, 26); $tbDir.Text = $Opc.Dest
+$tbDir.BackColor = $cPanel; $tbDir.ForeColor = $cBlanco; $tbDir.BorderStyle = 'FixedSingle'; $tbDir.Anchor = 'Top,Left,Right'; $p2.Controls.Add($tbDir)
+$bExam = Boton 'Examinar...' 604; $bExam.Location = New-Object Drawing.Point(604, 34); $bExam.Size = New-Object Drawing.Size(130, 30); $bExam.Anchor = 'Top,Right'; $p2.Controls.Add($bExam)
+$bExam.Add_Click({ $d = New-Object Windows.Forms.FolderBrowserDialog; $d.SelectedPath = $tbDir.Text; if ($d.ShowDialog() -eq 'OK') { $tbDir.Text = $d.SelectedPath } })
+$p2.Controls.Add((Etiqueta 'Elige una carpeta donde puedas escribir (una de OneDrive también vale).' 4 70 730 20 $cGris (& $fMono 9 'Italic')))
+$lbPrev = Etiqueta '' 4 92 730 40 $cGris (& $fMono 9.5 'Regular'); $p2.Controls.Add($lbPrev)
+$p2.Controls.Add((Etiqueta 'Accesos directos' 4 142 730 24 $cBlanco (& $fMono 11 'Bold')))
+function Casilla($texto, $y, $marcada) { $c = New-Object Windows.Forms.CheckBox; $c.Text = $texto; $c.Location = New-Object Drawing.Point(8, $y); $c.Size = New-Object Drawing.Size(720, 26); $c.Checked = $marcada; $c.ForeColor = $cBlanco; $c.FlatStyle = 'Flat'; $c.Cursor = 'Hand'; $p2.Controls.Add($c); return $c }
+$ckEsc = Casilla 'Acceso directo en el Escritorio' 172 $true
+$ckIni = Casilla 'Entrada en el menú Inicio' 202 $true
+$ckArr = Casilla "Arrancar $($App.Nombre) solo al encender el ordenador" 232 $false
+
+# pagina 3: instalando
+$lbPasos = @()
+for ($k = 0; $k -lt $Pasos.Count; $k++) { $l = Etiqueta "" 4 (2 + 24 * $k) 730 22 $cGris $null; $p3.Controls.Add($l); $lbPasos += $l }
+$pista = New-Object Windows.Forms.Panel; $pista.Location = New-Object Drawing.Point(4, 180); $pista.Size = New-Object Drawing.Size(690, 16); $pista.BackColor = $cPanel; $pista.Anchor = 'Top,Left,Right'; $p3.Controls.Add($pista)
+$relleno = New-Object Windows.Forms.Panel; $relleno.Location = New-Object Drawing.Point(0, 0); $relleno.Size = New-Object Drawing.Size(0, 16); $relleno.BackColor = $cCian; $pista.Controls.Add($relleno)
+$lbPct = Etiqueta '0 %' 700 178 44 20 $cCian $null; $lbPct.Anchor = 'Top,Right'; $p3.Controls.Add($lbPct)
+$rtLog = New-Object Windows.Forms.RichTextBox; $rtLog.Location = New-Object Drawing.Point(4, 206); $rtLog.Size = New-Object Drawing.Size(730, 90); $rtLog.ReadOnly = $true
+$rtLog.BackColor = [Drawing.Color]::FromArgb(7, 10, 14); $rtLog.ForeColor = $cGris; $rtLog.Font = & $fMono 8.5 'Regular'; $rtLog.BorderStyle = 'None'; $rtLog.Anchor = 'Top,Left,Right,Bottom'; $p3.Controls.Add($rtLog)
+
+# pagina 4: fin
+$lbFin = Etiqueta '' 4 4 730 30 $cVerde (& $fMono 14 'Bold'); $p4.Controls.Add($lbFin)
+$lbFin2 = Etiqueta '' 4 50 730 120 $cGris $null; $p4.Controls.Add($lbFin2)
+$ckAbrir = New-Object Windows.Forms.CheckBox; $ckAbrir.Text = "Abrir $($App.Nombre) al terminar"; $ckAbrir.Location = New-Object Drawing.Point(8, 196); $ckAbrir.Size = New-Object Drawing.Size(500, 26)
+$ckAbrir.Checked = $true; $ckAbrir.ForeColor = $cBlanco; $ckAbrir.FlatStyle = 'Flat'; $ckAbrir.Cursor = 'Hand'; $p4.Controls.Add($ckAbrir)
+$bVer = Boton 'Ver registro' 4; $bVer.Location = New-Object Drawing.Point(4, 236); $bVer.Size = New-Object Drawing.Size(170, 32); $p4.Controls.Add($bVer)
+$bCopiar = Boton 'Copiar registro' 184; $bCopiar.Location = New-Object Drawing.Point(184, 236); $bCopiar.Size = New-Object Drawing.Size(190, 32); $p4.Controls.Add($bCopiar)
+$bCarp = Boton 'Abrir carpeta' 384; $bCarp.Location = New-Object Drawing.Point(384, 236); $bCarp.Size = New-Object Drawing.Size(170, 32); $p4.Controls.Add($bCarp)
+$bGuia = Boton 'Guía rápida' 564; $bGuia.Location = New-Object Drawing.Point(564, 236); $bGuia.Size = New-Object Drawing.Size(170, 32); $p4.Controls.Add($bGuia)
+$bCarp.Add_Click({ Start-Process explorer.exe -ArgumentList ('"' + $Opc.Dest + '"') })
+$bGuia.Add_Click({ Start-Process 'https://kuerb0.github.io/portal/' })
+$bVer.Add_Click({ Start-Process notepad.exe -ArgumentList ('"' + $LogPath + '"') })
+$bCopiar.Add_Click({ try { Set-Clipboard -Value (Get-Content -LiteralPath $LogPath -Raw -Encoding UTF8); $bCopiar.Text = '¡Copiado!' } catch { $bCopiar.Text = 'No se pudo copiar' } })
+
+$bAtras = Boton '< Atrás' 328; $bSig = Boton 'Siguiente >' 468; $bCan = Boton 'Cancelar' 632
+foreach ($b in $bAtras, $bSig, $bCan) { $b.Anchor = 'Bottom,Right' }
+$f.Controls.AddRange(@($bAtras, $bSig, $bCan))
+$estado = @{ pagina = 1; pyw = $null; trabajando = $false; pct = 0 }
+$pista.Add_Resize({ $relleno.Size = New-Object Drawing.Size([int]($pista.Width * $estado.pct / 100), $pista.Height) })
+
+# escalado: cada control guarda su tamano de diseno; al cambiar la ventana todo se redimensiona por igual (letra incluida) y se centra
+function Registrar($c) { foreach ($h in $c.Controls) { if ($h -eq $relleno) { continue }; $h.Tag = @{ B = $h.Bounds; F = $h.Font.Size }; $h.Anchor = 'Top,Left'; Registrar $h } }
+function Escalar($c, $s, $ox) {
+    foreach ($h in $c.Controls) {
+        if ($h.Tag -isnot [hashtable]) { continue }
+        $b = $h.Tag.B
+        $x = [int]($b.X * $s) + $(if ($c -eq $f) { $ox } else { 0 })
+        $h.Bounds = New-Object Drawing.Rectangle($x, [int]($b.Y * $s), [int]($b.Width * $s), [int]($b.Height * $s))
+        $tam = [single]($h.Tag.F * $s)
+        if ([Math]::Abs($h.Font.Size - $tam) -gt 0.05) { $h.Font = New-Object Drawing.Font($h.Font.FontFamily, $tam, $h.Font.Style) }
+        Escalar $h $s 0
+    }
+}
+function Reajustar {
+    $w = $f.ClientSize.Width; $h = $f.ClientSize.Height
+    if ($w -lt 50 -or $h -lt 50) { return }
+    $s = [Math]::Min($w / $DW, $h / $DH)
+    $f.SuspendLayout(); Escalar $f $s ([int](($w - $DW * $s) / 2)); $f.ResumeLayout()
+}
+Registrar $f
+$f.Add_Resize({ Reajustar })
+$f.Add_Shown({ Reajustar; if ($LimpiarTemp) { New-Item -ItemType File -Path (Join-Path (Split-Path -Parent $PSCommandPath) 'listo') -Force | Out-Null } })      # avisa al .bat de que la ventana ya esta abierta (y su barra de carga puede cerrarse)
+
+function Pintar-Paso($k, $e) {
+    $glifo, $col = switch ($e) { 'ok' { '[ OK ]', $cVerde } 'curso' { '[ >> ]', $cCian } 'fallo' { '[FAIL]', $cRojo } 'aviso' { '[WARN]', $cOro } default { '[    ]', $cGris } }
+    $lbPasos[$k].Text = "$glifo  $($Pasos[$k])"; $lbPasos[$k].ForeColor = $col
+}
+function Ir($n) {
+    $estado.pagina = $n
+    $p1.Visible = ($n -eq 1); $p2.Visible = ($n -eq 2); $p3.Visible = ($n -eq 3); $p4.Visible = ($n -eq 4)
+    $bAtras.Visible = ($n -eq 2); $bCan.Visible = ($n -le 3); $bSig.Enabled = ($n -ne 3)
+    if ($n -eq 2) { Detectar }
+    $bSig.Text = switch ($n) { 2 { 'Instalar' } 4 { 'Terminar' } default { 'Siguiente >' } }
+}
+for ($k = 0; $k -lt $Pasos.Count; $k++) { Pintar-Paso $k 'pend' }
+
+function Detectar {
+    $d = $tbDir.Text.Trim(); $txt = ''; $col = $cGris
+    try {
+        if ($d -and [IO.Path]::IsPathRooted($d)) {
+            $v = Version-De $d
+            if ($v) {
+                $txt = if ($v -eq $App.Version) { "Ya hay $($App.Nombre) $v en esta carpeta: se reinstalará. Se guarda una copia de la actual en anteriores\." } else { "Ya hay $($App.Nombre) $v en esta carpeta: se actualizará a $($App.Version). Se guarda una copia de la actual en anteriores\." }
+                $col = $cOro
+            } elseif (Test-Path -LiteralPath (Join-Path $d '.git')) { $txt = 'Carpeta con git (desarrollo): los ficheros del programa se sobrescribirán con los del instalador.'; $col = $cOro }
+            elseif (Test-Path -LiteralPath $d) { $txt = if (Get-ChildItem -LiteralPath $d -Force | Select-Object -First 1) { 'La carpeta tiene otros ficheros: no se tocan.' } else { 'Carpeta vacía: instalación nueva.' }; $col = $cVerde }
+            else { $txt = 'La carpeta no existe: se creará.'; $col = $cVerde }
+        }
+    } catch { }
+    $lbPrev.Text = $txt; $lbPrev.ForeColor = $col
+}
+$tbDir.Add_TextChanged({ Detectar })
+
+function Pedir-Cancelar {
+    if (-not $estado.trabajando -or $Opc.Cancelar) { return }
+    if ([Windows.Forms.MessageBox]::Show('¿Cancelar la instalación? Lo que ya se haya copiado se queda, y puedes volver a ejecutar el instalador.', 'Cancelar', 'YesNo', 'Question') -eq 'Yes') { $Opc.Cancelar = $true; $bCan.Enabled = $false; $bCan.Text = 'Cancelando...' }
+}
+
+function Lanzador-Final {      # lo que se abre al terminar: la app, o su asistente de configuracion si es la primera vez
+    $l = $App.Lanzador
+    if ($App.PrimeraVez -and -not ((Test-Path -LiteralPath (Join-Path $Opc.Dest $App.PrimeraSenal)) -or (Test-Path -LiteralPath (Join-Path $Opc.Dest 'config.json')))) { $l = $App.PrimeraVez }
+    return (Join-Path $Opc.Dest $l)
+}
+
+function Terminar-Pagina($ok, $motivo) {
+    $bCan.Enabled = $true; $bCan.Text = 'Cancelar'
+    $bCarp.Visible = [bool]$ok; $bGuia.Visible = [bool]$ok
+    if ($ok) {
+        $lbFin.Text = '[ OK ]  Instalación terminada'; $lbFin.ForeColor = $cVerde
+        $lbFin2.Text = "$($App.Nombre) $($App.Version) está instalado en:`r`n  $($Opc.Dest)`r`n`r`nPuedes desinstalarlo desde «Aplicaciones» de Windows."; $ckAbrir.Visible = $true
+        $ckAbrir.Text = $(if ($App.PrimeraVez -and (Lanzador-Final) -like "*$($App.PrimeraVez)") { 'Abrir el asistente de configuración al terminar' } else { "Abrir $($App.Nombre) al terminar" })
+    } else {
+        $lbFin.Text = '[FAIL]  La instalación no se ha completado'; $lbFin.ForeColor = $cRojo
+        if ($motivo -eq 'Instalación cancelada.') {
+            $lbFin.Text = '[WARN]  Instalación cancelada'; $lbFin.ForeColor = $cOro
+            $lbFin2.Text = "Has cancelado la instalación. Lo ya copiado se queda.`r`nPuedes volver a ejecutar el instalador cuando quieras: lo ya hecho no se repite."
+        } else {
+            $lbFin2.Text = "Motivo: $motivo`r`nSuele bastar con volver a ejecutar el instalador: lo ya hecho no se repite.`r`nSi se repite, pulsa «Copiar registro» y mándame el texto."
+        }
+        $ckAbrir.Visible = $false
+    }
+    Ir 4
+}
+
+$timer = New-Object Windows.Forms.Timer; $timer.Interval = 120
+$timer.Add_Tick({
+    $m = $null
+    while ($Q.TryDequeue([ref]$m)) {
+        switch ($m.T) {
+            'log' { $rtLog.AppendText("$($m.A)`r`n"); $rtLog.ScrollToCaret() }
+            'paso' { Pintar-Paso $m.A $m.B }
+            'prog' { $estado.pct = $m.A; $relleno.Width = [int]($pista.Width * $m.A / 100); $lbPct.Text = "$($m.A) %" }
+            'fin' { $estado.trabajando = $false; $estado.pyw = $m.B; Terminar-Pagina $m.A $m.B }
+            'nueva' { try { if ([version]$m.A -gt [version]$App.Version) { $lbNueva.Text = "Hay una versión más nueva ($($m.A)): descárgala en kuerb0.github.io/portal" } } catch { } }
+        }
+    }
+})
+
+$bCan.Add_Click({ if ($estado.trabajando) { Pedir-Cancelar } else { $f.Close() } })
+$f.AcceptButton = $bSig; $f.CancelButton = $bCan      # Intro = siguiente, Esc = cancelar
+$bAtras.Add_Click({ Ir 1 })
+$bSig.Add_Click({
+    switch ($estado.pagina) {
+        1 { Ir 2 }
+        2 {
+            $d = $tbDir.Text.Trim()
+            if (-not $d -or -not [IO.Path]::IsPathRooted($d)) { [void][Windows.Forms.MessageBox]::Show('Escribe o elige una carpeta (ruta completa).', 'Carpeta', 'OK', 'Warning'); return }
+            $Opc.Dest = $d; $Opc.Escritorio = $ckEsc.Checked; $Opc.Inicio = $ckIni.Checked; $Opc.Arranque = $ckArr.Checked
+            $estado.trabajando = $true; Ir 3; Lanzar-Trabajo
+        }
+        4 { if ($ckAbrir.Checked -and $ckAbrir.Visible -and $estado.pyw) { $l = Lanzador-Final; Start-Process -FilePath $estado.pyw -ArgumentList ('"' + $l + '"') -WorkingDirectory (Split-Path -Parent $l) }; $f.Close() }
+    }
+})
+$f.Add_FormClosing({ if ($estado.trabajando) { $_.Cancel = $true; Pedir-Cancelar } })
+
+if ($Captura) {
+    New-Item -ItemType Directory -Path $Captura -Force | Out-Null
+    $f.Show(); [Windows.Forms.Application]::DoEvents()
+    function Foto($nombre) { [Windows.Forms.Application]::DoEvents(); $b = New-Object Drawing.Bitmap($f.Width, $f.Height); $f.DrawToBitmap($b, (New-Object Drawing.Rectangle(0, 0, $f.Width, $f.Height))); $b.Save((Join-Path $Captura "$nombre.png")); $b.Dispose() }
+    Ir 1; Foto '1-bienvenida'; Ir 2; Foto '2-opciones'
+    $lbNueva.Text = 'Hay una versión más nueva (1.8.0): descárgala en kuerb0.github.io/portal'; Ir 1; Foto '1b-nueva'
+    Ir 3; 0..6 | ForEach-Object { Pintar-Paso $_ $(if ($_ -lt 3) { 'ok' } elseif ($_ -eq 3) { 'curso' } else { 'pend' }) }; $relleno.Width = 380; $lbPct.Text = '55 %'
+    $rtLog.Text = "  py\app_vuelos.py`r`n  py\vuelos_app.pyw`r`n12 ficheros en C:\Programas\$($App.Nombre)`r`nPython: C:\Programas\$($App.Nombre)\python\python.exe`r`nCollecting streamlit`r`nSuccessfully installed streamlit-1.50.0"
+    Foto '3-instalando'; Terminar-Pagina $true $null; Foto '4-fin'; Terminar-Pagina $false 'No hay conexión'; Foto '5-error'
+    $f.Dispose(); exit 0
+}
+Ir 1
+$timer.Start()
+if (-not $Captura) {      # ¿hay una version mas nueva en el portal? (una sola consulta; no se envia nada)
+    $psv = [powershell]::Create()
+    [void]$psv.AddScript({ param($Q, $url, $pref)
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            $rq = [Net.WebRequest]::Create($url); $rq.Timeout = 5000; $rs = $rq.GetResponse()
+            $t = (New-Object IO.StreamReader($rs.GetResponseStream())).ReadToEnd(); $rs.Close()
+            $max = $null
+            foreach ($m in [regex]::Matches($t, [regex]::Escape($pref) + ' (\d+(?:\.\d+)*) - Instalador')) { $v = [version]$m.Groups[1].Value; if (-not $max -or $v -gt $max) { $max = $v } }
+            if ($max) { $Q.Enqueue([pscustomobject]@{ T = 'nueva'; A = $max.ToString(); B = $null }) }
+        } catch { }
+    }).AddArgument($Q).AddArgument($App.PortalUrl).AddArgument($App.PortalPrefijo)
+    [void]$psv.BeginInvoke()
+}
+[void]$f.ShowDialog()
+if ($LimpiarTemp) { Remove-Item -LiteralPath (Split-Path -Parent $PSCommandPath) -Recurse -Force -ErrorAction SilentlyContinue }   # el .bat ya se ha cerrado: limpia su carpeta temporal
 :::PSEND
 
 :::BANNERSTART
@@ -235,7 +659,7 @@ while ($i -lt $lines.Length) {
                                                                     V E R S I Ó N   1.0.0
 :::TITULOEND
 
-:::BEGIN apagador_app.py|text
+:::BEGIN apagador_app.py|text|970676d6e113c6b7d31565fb5786ac23bef2c8788319c1a73f510cf1b2e4c0d0
 """
 Apagador programado con interfaz grafica.
 Permite elegir una duracion en minutos o una hora exacta del dia
@@ -457,7 +881,7 @@ def main():
 if __name__ == "__main__":
     main()
 :::END
-:::BEGIN apagador.ico|b64
+:::BEGIN apagador.ico|b64|0ab870566ee50df217dc05738577df0634d77b2774c226cd8c1796ca671dc0a9
 AAABAAcAEBAAAAAAIADdAgAAdgAAABgYAAAAACAAGQUAAFMDAAAgIAAAAAAgAE0HAABsCAAAMDAA
 AAAAIADvCwAAuQ8AAEBAAAAAACAA+Q8AAKgbAACAgAAAAAAgALcfAAChKwAAAAAAAAAAIADNCgAA
 WEsAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAqRJREFUeJxVk0toXHUUxn/f
@@ -846,10 +1270,10 @@ I8ArNIUGzvmBQpxgG6iHwf+OglwgCPJj8M9RmEYEQT4M/jUKdBNBEB+D345CDSAM4mDo+1C0CQiC
 fRj8MRRvIoJgHQZ/DorohDCYj6Gfj4IuQBj0Y+h9UdzFCINrDP06FHojwuCBod+DogeiFAgMfAwc
 QnAVQoFhj4uDSShyKDDsuXBYBXkGBAMOAAAAAGn9Dd2WMJ5H+q1/AAAAAElFTkSuQmCC
 :::END
-:::BEGIN VERSION.txt|text
+:::BEGIN VERSION.txt|text|4ca8bbd3c595ee306226c6996b32b8d47a900217c55a7ed0cfc868ee444f34f1
 1.0.0
 :::END
-:::BEGIN herramientas/descargar_python.ps1|text
+:::BEGIN herramientas/descargar_python.ps1|text|5fd9695107c90a52315badef90b8f524381b12a42f5b9f15e7fcfc8e3278828f
 # Descarga el instalador de Python para Windows (64 bits) a la ruta indicada.
 # Busca en python.org la version 3.13 mas reciente que tenga instalador y,
 # si no puede, prueba con una lista de versiones conocidas.
