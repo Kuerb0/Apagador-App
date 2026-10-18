@@ -2,5 +2,14 @@
   "nombre": "Apagador",
   "nombre_visible": "Apagador",
   "version_fichero": "VERSION.txt",
-  "icono": "apagador.ico"
+  "icono": "apagador.ico",
+  "exe": {
+    "entrada": "apagador_app.py",
+    "datos": [
+      "apagador.ico:."
+    ],
+    "incluir": [
+      "tkinter"
+    ]
+  }
 }
